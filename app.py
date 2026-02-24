@@ -5,8 +5,8 @@ from PIL import Image
 import io
 import gspread
 from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+import requests
+import base64
 
 # Page config
 st.set_page_config(
@@ -15,9 +15,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# Google Connection
+# Google Sheets Connection
 @st.cache_resource
-def get_google_services():
+def get_google_sheet():
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
@@ -28,44 +28,30 @@ def get_google_services():
         scopes=scope
     )
     
-    sheets_client = gspread.authorize(credentials)
-    sheet = sheets_client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).sheet1
-    drive_service = build('drive', 'v3', credentials=credentials)
-    
-    return sheet, drive_service
+    client = gspread.authorize(credentials)
+    sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).sheet1
+    return sheet
 
-# Upload image to Google Drive
-def upload_to_drive(image, filename):
+# Upload image to Imgur (Free)
+def upload_to_imgur(image):
     try:
-        sheet, drive_service = get_google_services()
+        # Convert image to base64
+        buffered = io.BytesIO()
+        image.save(buffered, format="JPEG", quality=70)
+        img_base64 = base64.b64encode(buffered.getvalue()).decode()
         
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='JPEG', quality=70)
-        img_byte_arr.seek(0)
+        # Upload to Imgur
+        url = "https://api.imgur.com/3/image"
+        headers = {"Authorization": "Client-ID 546c25a59c58ad7"}
+        data = {"image": img_base64, "type": "base64"}
         
-        file_metadata = {
-            'name': filename,
-            'parents': [st.secrets["google_drive"]["folder_id"]]
-        }
+        response = requests.post(url, headers=headers, data=data)
         
-        media = MediaIoBaseUpload(img_byte_arr, mimetype='image/jpeg')
-        
-        file = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id'
-        ).execute()
-        
-        # Make public
-        drive_service.permissions().create(
-            fileId=file['id'],
-            body={'type': 'anyone', 'role': 'reader'}
-        ).execute()
-        
-        # Clickable URL
-        image_url = f"https://drive.google.com/file/d/{file['id']}/view"
-        
-        return image_url
+        if response.status_code == 200:
+            return response.json()["data"]["link"]
+        else:
+            st.error(f"Imgur error: {response.text}")
+            return None
     except Exception as e:
         st.error(f"Upload error: {e}")
         return None
@@ -73,7 +59,7 @@ def upload_to_drive(image, filename):
 # Load data
 def load_data():
     try:
-        sheet, _ = get_google_services()
+        sheet = get_google_sheet()
         data = sheet.get_all_records()
         return data
     except Exception as e:
@@ -83,7 +69,7 @@ def load_data():
 # Save data
 def save_to_sheet(order_number, image_url):
     try:
-        sheet, _ = get_google_services()
+        sheet = get_google_sheet()
         date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         sheet.append_row([date_now, order_number, image_url])
         return True
@@ -94,7 +80,7 @@ def save_to_sheet(order_number, image_url):
 # Delete row
 def delete_from_sheet(row_index):
     try:
-        sheet, _ = get_google_services()
+        sheet = get_google_sheet()
         sheet.delete_rows(row_index + 2)
         return True
     except Exception as e:
@@ -162,8 +148,8 @@ with col1:
                 image = Image.open(image_data)
                 image.thumbnail((800, 800))
                 
-                filename = f"stock_{order_number}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-                image_url = upload_to_drive(image, filename)
+                # Upload to Imgur
+                image_url = upload_to_imgur(image)
                 
                 if image_url:
                     if save_to_sheet(order_number, image_url):
