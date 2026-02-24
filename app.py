@@ -61,38 +61,45 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.markdown("### 📝 New Stock Entry")
     
-    with st.form("stock_form", clear_on_submit=True):
-        order_number = st.text_input("Order Number *", placeholder="Enter order number")
-        
-        st.markdown("#### 📷 Stock Image")
-        uploaded_file = st.file_uploader(
-            "Choose image or take photo",
-            type=['jpg', 'jpeg', 'png'],
-            help="📱 Mobile pe 'Browse files' click karo, phir Camera select karo"
-        )
-        
-        submitted = st.form_submit_button("💾 Save Record", use_container_width=True)
-        
-        if submitted:
-            if not order_number:
-                st.error("⚠️ Order Number is required!")
-            elif not uploaded_file:
-                st.error("⚠️ Please upload an image!")
-            else:
-                image = Image.open(uploaded_file)
-                image.thumbnail((800, 800))
-                image_base64 = image_to_base64(image)
-                
-                record = {
-                    "id": datetime.now().strftime("%Y%m%d%H%M%S"),
-                    "order_number": order_number,
-                    "image": image_base64,
-                    "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                
-                st.session_state.records.insert(0, record)
-                st.success("✅ Record saved successfully!")
-                st.balloons()
+    order_number = st.text_input("Order Number *", placeholder="Enter order number")
+    
+    st.markdown("#### 📷 Stock Image")
+    
+    # 2 Options - Take Photo or Upload
+    option = st.radio("Select option:", ["📷 Take Photo", "📤 Upload Photo"], horizontal=True)
+    
+    image_data = None
+    
+    if option == "📷 Take Photo":
+        camera_photo = st.camera_input("Take a photo")
+        if camera_photo:
+            image_data = camera_photo
+    else:
+        uploaded_file = st.file_uploader("Upload image", type=['jpg', 'jpeg', 'png'])
+        if uploaded_file:
+            image_data = uploaded_file
+    
+    # Save Button
+    if st.button("💾 Save Record", use_container_width=True):
+        if not order_number:
+            st.error("⚠️ Order Number is required!")
+        elif not image_data:
+            st.error("⚠️ Please take or upload an image!")
+        else:
+            image = Image.open(image_data)
+            image.thumbnail((800, 800))
+            image_base64 = image_to_base64(image)
+            
+            record = {
+                "id": datetime.now().strftime("%Y%m%d%H%M%S"),
+                "order_number": order_number,
+                "image": image_base64,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            st.session_state.records.insert(0, record)
+            st.success("✅ Record saved successfully!")
+            st.balloons()
 
 # RIGHT - Records List
 with col2:
