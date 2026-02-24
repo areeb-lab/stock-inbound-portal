@@ -65,22 +65,21 @@ with col1:
         order_number = st.text_input("Order Number *", placeholder="Enter order number")
         
         st.markdown("#### 📷 Stock Image")
-        uploaded_file = st.file_uploader("Choose image", type=['jpg', 'jpeg', 'png'])
-        camera_photo = st.camera_input("Or take a photo")
+        uploaded_file = st.file_uploader(
+            "Choose image or take photo",
+            type=['jpg', 'jpeg', 'png'],
+            help="📱 Mobile pe 'Browse files' click karo, phir Camera select karo"
+        )
         
         submitted = st.form_submit_button("💾 Save Record", use_container_width=True)
         
         if submitted:
             if not order_number:
                 st.error("⚠️ Order Number is required!")
-            elif not uploaded_file and not camera_photo:
-                st.error("⚠️ Please upload or capture an image!")
+            elif not uploaded_file:
+                st.error("⚠️ Please upload an image!")
             else:
-                if camera_photo:
-                    image = Image.open(camera_photo)
-                else:
-                    image = Image.open(uploaded_file)
-                
+                image = Image.open(uploaded_file)
                 image.thumbnail((800, 800))
                 image_base64 = image_to_base64(image)
                 
@@ -162,8 +161,6 @@ with st.sidebar:
         )
     
     st.markdown("---")
-    st.markdown("### ⚠️ Danger Zone")
-    
     if st.button("🗑️ Clear All Data", use_container_width=True):
         st.session_state.records = []
         st.rerun()
