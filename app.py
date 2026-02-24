@@ -32,25 +32,27 @@ def get_google_sheet():
     sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).sheet1
     return sheet
 
-# Upload image to Imgur (Free)
-def upload_to_imgur(image):
+# Upload image to ImageBB
+def upload_to_imgbb(image):
     try:
         # Convert image to base64
         buffered = io.BytesIO()
         image.save(buffered, format="JPEG", quality=70)
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
         
-        # Upload to Imgur
-        url = "https://api.imgur.com/3/image"
-        headers = {"Authorization": "Client-ID 546c25a59c58ad7"}
-        data = {"image": img_base64, "type": "base64"}
+        # Upload to ImageBB
+        url = "https://api.imgbb.com/1/upload"
+        payload = {
+            "key": st.secrets["imgbb"]["api_key"],
+            "image": img_base64
+        }
         
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, payload)
         
         if response.status_code == 200:
-            return response.json()["data"]["link"]
+            return response.json()["data"]["url"]
         else:
-            st.error(f"Imgur error: {response.text}")
+            st.error(f"ImageBB error: {response.text}")
             return None
     except Exception as e:
         st.error(f"Upload error: {e}")
@@ -148,8 +150,8 @@ with col1:
                 image = Image.open(image_data)
                 image.thumbnail((800, 800))
                 
-                # Upload to Imgur
-                image_url = upload_to_imgur(image)
+                # Upload to ImageBB
+                image_url = upload_to_imgbb(image)
                 
                 if image_url:
                     if save_to_sheet(order_number, image_url):
