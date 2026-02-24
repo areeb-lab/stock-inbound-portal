@@ -39,7 +39,7 @@ if 'records' not in st.session_state:
 st.markdown("""
 <div class="main-header">
     <h1>📦 Stock Inbound Portal</h1>
-    <p>Stock ki photo aur order details save karein</p>
+    <p>Stock ki photo aur order number save karein</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -63,10 +63,6 @@ with col1:
     
     with st.form("stock_form", clear_on_submit=True):
         order_number = st.text_input("Order Number *", placeholder="Enter order number")
-        product_name = st.text_input("Product Name", placeholder="Enter product name")
-        quantity = st.number_input("Quantity", min_value=0, value=0, step=1)
-        supplier = st.text_input("Supplier Name", placeholder="Enter supplier name")
-        notes = st.text_area("Notes", placeholder="Additional notes", height=80)
         
         st.markdown("#### 📷 Stock Image")
         uploaded_file = st.file_uploader("Choose image", type=['jpg', 'jpeg', 'png'])
@@ -91,10 +87,6 @@ with col1:
                 record = {
                     "id": datetime.now().strftime("%Y%m%d%H%M%S"),
                     "order_number": order_number,
-                    "product_name": product_name,
-                    "quantity": quantity,
-                    "supplier": supplier,
-                    "notes": notes,
                     "image": image_base64,
                     "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
@@ -120,7 +112,7 @@ with col2:
     else:
         for idx, record in enumerate(filtered_records):
             with st.expander(f"📦 Order #{record['order_number']} - {record['date'][:10]}", expanded=(idx == 0)):
-                rec_col1, rec_col2 = st.columns([1, 2])
+                rec_col1, rec_col2 = st.columns([1, 1])
                 
                 with rec_col1:
                     try:
@@ -131,14 +123,6 @@ with col2:
                 
                 with rec_col2:
                     st.markdown(f"**Order #:** {record['order_number']}")
-                    if record.get('product_name'):
-                        st.markdown(f"**Product:** {record['product_name']}")
-                    if record.get('quantity'):
-                        st.markdown(f"**Quantity:** {record['quantity']}")
-                    if record.get('supplier'):
-                        st.markdown(f"**Supplier:** {record['supplier']}")
-                    if record.get('notes'):
-                        st.markdown(f"**Notes:** {record['notes']}")
                     st.markdown(f"**Date:** {record['date']}")
                     
                     if st.button(f"🗑️ Delete", key=f"del_{record['id']}"):
@@ -154,8 +138,6 @@ with st.sidebar:
         today = datetime.now().strftime("%Y-%m-%d")
         today_records = [r for r in st.session_state.records if r['date'].startswith(today)]
         st.metric("Today's Entries", len(today_records))
-        total_qty = sum(r.get('quantity', 0) for r in st.session_state.records)
-        st.metric("Total Quantity", total_qty)
     
     st.markdown("---")
     st.markdown("### 📥 Export Data")
@@ -165,10 +147,6 @@ with st.sidebar:
         for r in st.session_state.records:
             export_data.append({
                 "Order Number": r['order_number'],
-                "Product Name": r.get('product_name', ''),
-                "Quantity": r.get('quantity', 0),
-                "Supplier": r.get('supplier', ''),
-                "Notes": r.get('notes', ''),
                 "Date": r['date']
             })
         
