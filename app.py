@@ -158,7 +158,6 @@ if st.session_state.show_records:
 
 st.markdown("### 📝 New Stock Entry")
 
-# Order number with selectbox for auto-complete
 order_category_map = get_dump_data()
 all_orders = list(order_category_map.keys())
 
@@ -194,7 +193,7 @@ else:
     if uploaded_file:
         image_data = uploaded_file
 
-if st.button("💾 Save Record", use_container_width=True):
+if st.button("🚚 Chalo Inbound Mai", use_container_width=True):
     if not order_number:
         st.error("⚠️ Order Number is required!")
     elif not category:
