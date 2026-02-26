@@ -143,7 +143,7 @@ total = pickup_ready + inbound_done
 pickup_pct = (pickup_ready / total * 100) if total > 0 else 0
 inbound_pct = (inbound_done / total * 100) if total > 0 else 0
 
-col_header, col_score, col_btn = st.columns([2, 1, 0.5])
+col_header, col_score = st.columns([2, 1])
 
 with col_header:
     st.markdown("""
@@ -192,11 +192,6 @@ with col_score:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-with col_btn:
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("📋 Records"):
-        st.session_state.show_records = not st.session_state.get('show_records', False)
 
 if st.session_state.success:
     play_beep_sound()
@@ -263,6 +258,10 @@ with col2:
                 st.session_state.success = True
                 st.session_state.form_key += 1
                 st.rerun()
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("📋 Records"):
+        st.session_state.show_records = not st.session_state.get('show_records', False)
 
 if st.session_state.get('show_records', False):
     st.markdown("---")
