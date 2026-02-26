@@ -7,12 +7,189 @@ import gspread
 from google.oauth2.service_account import Credentials
 import requests
 import base64
+import time
 
-st.set_page_config(page_title="Stock Inbound Portal", page_icon="📦", layout="wide")
+st.set_page_config(page_title="Fleek-bound", page_icon="🚚", layout="wide")
+
+# ANIMATED TRUCK INTRO
+if 'show_intro' not in st.session_state:
+    st.session_state.show_intro = True
+
+if st.session_state.show_intro:
+    intro_placeholder = st.empty()
+    
+    with intro_placeholder.container():
+        st.markdown("""
+        <style>
+            .intro-container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                z-index: 9999;
+            }
+            
+            .truck-container {
+                text-align: center;
+                animation: driveIn 2s ease-out forwards;
+            }
+            
+            @keyframes driveIn {
+                0% { transform: translateX(-100vw); }
+                100% { transform: translateX(0); }
+            }
+            
+            .truck {
+                font-size: 120px;
+                animation: bounce 0.5s ease infinite;
+            }
+            
+            @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+            }
+            
+            .door-container {
+                position: relative;
+                width: 300px;
+                height: 200px;
+                margin: 20px auto;
+                perspective: 1000px;
+            }
+            
+            .truck-back {
+                width: 300px;
+                height: 200px;
+                background: linear-gradient(145deg, #2d3436, #636e72);
+                border-radius: 10px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            }
+            
+            .door {
+                position: absolute;
+                width: 300px;
+                height: 200px;
+                background: linear-gradient(145deg, #74b9ff, #0984e3);
+                border-radius: 10px;
+                transform-origin: top;
+                animation: openDoor 2s ease-out 2s forwards;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            }
+            
+            @keyframes openDoor {
+                0% { transform: rotateX(0deg); }
+                100% { transform: rotateX(-110deg); }
+            }
+            
+            .grn-text {
+                font-size: 28px;
+                font-weight: bold;
+                color: white;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                opacity: 0;
+                animation: fadeIn 1s ease-out 3.5s forwards;
+            }
+            
+            @keyframes fadeIn {
+                0% { opacity: 0; transform: scale(0.5); }
+                100% { opacity: 1; transform: scale(1); }
+            }
+            
+            .inbound-text {
+                font-size: 42px;
+                font-weight: bold;
+                background: linear-gradient(90deg, #00b894, #00cec9, #0984e3);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                text-shadow: none;
+                opacity: 0;
+                animation: fadeIn 1s ease-out 4s forwards, glow 2s ease-in-out infinite 4s;
+            }
+            
+            @keyframes glow {
+                0%, 100% { filter: brightness(1); }
+                50% { filter: brightness(1.3); }
+            }
+            
+            .wheels {
+                display: flex;
+                justify-content: space-around;
+                margin-top: -10px;
+            }
+            
+            .wheel {
+                width: 40px;
+                height: 40px;
+                background: #2d3436;
+                border-radius: 50%;
+                border: 5px solid #636e72;
+                animation: spin 1s linear infinite;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            .loading-text {
+                color: #dfe6e9;
+                font-size: 18px;
+                margin-top: 30px;
+                opacity: 0;
+                animation: fadeIn 1s ease-out 4.5s forwards;
+            }
+        </style>
+        
+        <div class="intro-container">
+            <div class="truck-container">
+                <div class="truck">🚚</div>
+                
+                <div class="door-container">
+                    <div class="truck-back">
+                        <div style="text-align: center;">
+                            <div class="inbound-text">📦 INBOUND</div>
+                            <div class="grn-text">GRN</div>
+                        </div>
+                    </div>
+                    <div class="door">
+                        <span style="font-size: 40px;">📦</span>
+                    </div>
+                </div>
+                
+                <div class="wheels">
+                    <div class="wheel"></div>
+                    <div class="wheel"></div>
+                </div>
+                
+                <div class="loading-text">Loading Fleek-bound...</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    time.sleep(6)
+    st.session_state.show_intro = False
+    intro_placeholder.empty()
+    st.rerun()
 
 # CACHE CLEAR BUTTON
 if st.sidebar.button("🔄 Clear Cache"):
     st.cache_resource.clear()
+    st.rerun()
+
+# REPLAY INTRO BUTTON
+if st.sidebar.button("🚚 Replay Intro"):
+    st.session_state.show_intro = True
     st.rerun()
 
 @st.cache_resource
@@ -27,14 +204,13 @@ def get_google_sheet():
     sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).sheet1
     return sheet
 
-# Category fetch from Dump sheet (FIXED)
+# Category fetch from Dump sheet
 def get_category_by_order(order_num):
     try:
         client = get_google_client()
         spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
-        dump_sheet = spreadsheet.worksheet("Dump")  # Capital D
+        dump_sheet = spreadsheet.worksheet("Dump")
         
-        # Column E (fleek_id) = 5, Column CL (category) = 90
         order_numbers = dump_sheet.col_values(5)[1:]
         categories = dump_sheet.col_values(90)[1:]
         
@@ -97,7 +273,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-header"><h1>📦 Stock Inbound Portal</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>🚚 Fleek-bound</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
 
 col1, col2 = st.columns([1, 1])
 
@@ -191,6 +367,6 @@ with st.sidebar:
             "Category": r.get('Category', ''),
             "Image URL": r.get('Image URL', '')
         } for r in records])
-        st.download_button("📥 Download CSV", df.to_csv(index=False), f"stock_records_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv", use_container_width=True)
+        st.download_button("📥 Download CSV", df.to_csv(index=False), f"fleek_bound_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv", use_container_width=True)
 
-st.markdown("<p style='text-align: center; color: #888;'>📦 Stock Inbound Portal</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #888;'>🚚 Fleek-bound</p>", unsafe_allow_html=True)
