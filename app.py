@@ -143,7 +143,7 @@ total = pickup_ready + inbound_done
 pickup_pct = (pickup_ready / total * 100) if total > 0 else 0
 inbound_pct = (inbound_done / total * 100) if total > 0 else 0
 
-col_header, col_score = st.columns([2, 1])
+col_header, col_score = st.columns([2, 1.5])
 
 with col_header:
     st.markdown("""
@@ -155,11 +155,11 @@ with col_header:
 
 with col_score:
     st.markdown(f"""
-    <div style="display: flex; align-items: center; gap: 20px;">
-        <div style="position: relative; width: 120px; height: 120px;">
+    <div style="display: flex; align-items: center; gap: 25px; padding: 15px;">
+        <div style="position: relative; width: 160px; height: 160px;">
             <div style="
-                width: 120px;
-                height: 120px;
+                width: 160px;
+                height: 160px;
                 border-radius: 50%;
                 background: conic-gradient(
                     #E67E22 0deg {pickup_pct * 3.6}deg,
@@ -170,8 +170,8 @@ with col_score:
                 justify-content: center;
             ">
                 <div style="
-                    width: 80px;
-                    height: 80px;
+                    width: 110px;
+                    height: 110px;
                     border-radius: 50%;
                     background: #0e1117;
                     display: flex;
@@ -179,16 +179,16 @@ with col_score:
                     align-items: center;
                     justify-content: center;
                 ">
-                    <span style="color: white; font-size: 1.5rem; font-weight: bold;">{total}</span>
-                    <span style="color: #888; font-size: 0.7rem;">Total</span>
+                    <span style="color: white; font-size: 2rem; font-weight: bold;">{total}</span>
+                    <span style="color: #888; font-size: 0.85rem;">Total</span>
                 </div>
             </div>
         </div>
         <div>
-            <div style="color: #E67E22; font-weight: bold;">🟠 PICKUP_READY</div>
-            <div style="color: #E67E22;">{pickup_ready} ({pickup_pct:.1f}%)</div>
-            <div style="color: #27AE60; font-weight: bold; margin-top: 10px;">🟢 INBOUND_DONE</div>
-            <div style="color: #27AE60;">{inbound_done} ({inbound_pct:.1f}%)</div>
+            <div style="color: #E67E22; font-weight: bold; font-size: 1.1rem;">🟠 PICKUP_READY</div>
+            <div style="color: #E67E22; font-size: 1.2rem; margin-bottom: 15px;">{pickup_ready} ({pickup_pct:.1f}%)</div>
+            <div style="color: #27AE60; font-weight: bold; font-size: 1.1rem;">🟢 INBOUND_DONE</div>
+            <div style="color: #27AE60; font-size: 1.2rem;">{inbound_done} ({inbound_pct:.1f}%)</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
