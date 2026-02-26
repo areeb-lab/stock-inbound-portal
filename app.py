@@ -1,4 +1,4 @@
-=import streamlit as st
+import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from PIL import Image
@@ -7,7 +7,6 @@ import base64
 from io import BytesIO
 from datetime import datetime
 import pandas as pd
-import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="wide")
 
@@ -44,20 +43,6 @@ st.markdown("""
         padding: 15px 30px;
         border-radius: 10px;
         width: 100%;
-    }
-    .camera-btn {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 15px 30px;
-        border: none;
-        border-radius: 10px;
-        font-size: 1.1rem;
-        cursor: pointer;
-        width: 100%;
-        margin: 10px 0;
-    }
-    .camera-btn:hover {
-        opacity: 0.9;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -236,24 +221,34 @@ with col2:
         </div>
         """, unsafe_allow_html=True)
     
-    st.markdown("### 📷 Stock Image (Back Camera)")
+    st.markdown("### 📷 Stock Image")
     
-    # Custom HTML file input with capture="environment" for back camera
-    st.markdown(f"""
-    <input type="file" accept="image/*" capture="environment" id="camera_input_{st.session_state.form_key}" 
-           onchange="handleFile(this)" style="display:none;">
-    <button class="camera-btn" onclick="document.getElementById('camera_input_{st.session_state.form_key}').click()">
-        📸 Take Photo (Back Camera)
-    </button>
-    """, unsafe_allow_html=True)
-    
-    # File uploader for receiving the image
     uploaded_file = st.file_uploader(
-        "Or upload from gallery",
+        "📸 Take Photo or Upload (Back Camera)",
         type=["jpg", "jpeg", "png"],
         key=f"upload_{st.session_state.form_key}",
-        label_visibility="visible"
+        accept_multiple_files=False
     )
+    
+    # Inject HTML to force back camera
+    st.markdown("""
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            input.setAttribute('capture', 'environment');
+            input.setAttribute('accept', 'image/*');
+        });
+    });
+    setTimeout(function() {
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            input.setAttribute('capture', 'environment');
+            input.setAttribute('accept', 'image/*');
+        });
+    }, 1000);
+    </script>
+    """, unsafe_allow_html=True)
     
     image = None
     if uploaded_file:
