@@ -7,6 +7,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import requests
 import base64
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centered")
 
@@ -46,19 +47,17 @@ def get_dump_data():
     except:
         return {}
 
-# Get Pickup Ready count from Score Card tab
 @st.cache_data(ttl=60)
 def get_pickup_ready_count():
     try:
         client = get_google_client()
         spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
         score_card_sheet = spreadsheet.worksheet("score card")
-        orders = score_card_sheet.col_values(3)[1:]  # Column C = Fleek order ID
-        return len([o for o in orders if o.strip()])  # Count non-empty orders
-    except Exception as e:
+        orders = score_card_sheet.col_values(3)[1:]
+        return len([o for o in orders if o.strip()])
+    except:
         return 0
 
-# Get Inbound Done count from Sheet1
 @st.cache_data(ttl=60)
 def get_inbound_done_count():
     try:
@@ -114,6 +113,51 @@ def delete_from_sheet(row_index):
     except:
         return False
 
+def create_donut_chart(pickup_ready, inbound_done):
+    total = pickup_ready + inbound_done
+    if total == 0:
+        total = 1
+    
+    pickup_pct = (pickup_ready / total) * 100
+    inbound_pct = (inbound_done / total) * 100
+    
+    fig = go.Figure(data=[go.Pie(
+        labels=['PICKUP_READY', 'INBOUND_DONE'],
+        values=[pickup_ready, inbound_done],
+        hole=0.6,
+        marker_colors=['#E67E22', '#27AE60'],
+        textinfo='value',
+        textfont_size=20,
+        textfont_color='white',
+        hovertemplate="<b>%{label}</b><br>Count: %{value}<br>Percent: %{percent}<extra></extra>"
+    )])
+    
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.2,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12)
+        ),
+        annotations=[
+            dict(
+                text=f'<b>{total}</b><br>Total',
+                x=0.5, y=0.5,
+                font_size=18,
+                showarrow=False
+            )
+        ],
+        margin=dict(t=20, b=60, l=20, r=20),
+        height=300,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    return fig
+
 st.markdown("""
 <style>
     .main-header {
@@ -136,56 +180,20 @@ st.markdown("""
         margin: 10px 0; 
         border-left: 4px solid #4CAF50;
     }
-    .scorecard {
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        color: white;
-        font-weight: bold;
-    }
-    .pickup-ready {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-    .inbound-done {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-    .score-number {
-        font-size: 36px;
-        margin: 10px 0;
-    }
-    .score-label {
-        font-size: 14px;
-        opacity: 0.9;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# HEADER WITH SCORECARDS
+# HEADER
 st.markdown('<div class="main-header"><h1>🚚 Fleek-Inbound 📦</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
 
-# SCORECARDS
+# DONUT CHART SCORECARD
 pickup_ready = get_pickup_ready_count()
 inbound_done = get_inbound_done_count()
 
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown(f"""
-    <div class="scorecard pickup-ready">
-        <div class="score-label">📦 Pickup Ready</div>
-        <div class="score-number">{pickup_ready}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
+col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    st.markdown(f"""
-    <div class="scorecard inbound-done">
-        <div class="score-label">✅ Inbound Done</div>
-        <div class="score-number">{inbound_done}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
+    fig = create_donut_chart(pickup_ready, inbound_done)
+    st.plotly_chart(fig, use_container_width=True)
 
 # RECORDS BUTTON
 col_spacer, col_btn = st.columns([4, 1])
@@ -277,7 +285,7 @@ if st.button("🚚 Chalo Inbound Mai", use_container_width=True):
             if image_url and save_to_sheet(order_number, category, image_url):
                 st.success("✅ Saved!")
                 st.balloons()
-                st.cache_data.clear()  # Refresh scorecard
+                st.cache_data.clear()
                 st.rerun()
 
 with st.sidebar:
