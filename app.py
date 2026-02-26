@@ -229,6 +229,30 @@ with col2:
     )
     image = None
     if image_option == "📷 Take Photo":
+        # Back camera use karne ke liye HTML/JS inject
+        st.markdown("""
+        <script>
+            const setBackCamera = () => {
+                const videoElements = document.querySelectorAll('video');
+                videoElements.forEach(video => {
+                    if (video.srcObject) {
+                        const tracks = video.srcObject.getTracks();
+                        tracks.forEach(track => track.stop());
+                    }
+                });
+                navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: "environment" } }
+                }).then(stream => {
+                    const video = document.querySelector('video');
+                    if (video) {
+                        video.srcObject = stream;
+                    }
+                }).catch(err => console.log(err));
+            };
+            setTimeout(setBackCamera, 1000);
+        </script>
+        """, unsafe_allow_html=True)
+        
         camera_image = st.camera_input("Take a photo", key=f"camera_{st.session_state.form_key}")
         if camera_image:
             image = Image.open(camera_image)
