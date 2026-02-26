@@ -7,14 +7,11 @@ import gspread
 from google.oauth2.service_account import Credentials
 import requests
 import base64
-from streamlit_js_eval import streamlit_js_eval
 
 st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centered")
 
 if 'show_records' not in st.session_state:
     st.session_state.show_records = False
-if 'order_number' not in st.session_state:
-    st.session_state.order_number = ""
 
 if st.sidebar.button("🔄 Clear Cache"):
     st.cache_resource.clear()
@@ -161,20 +158,20 @@ if st.session_state.show_records:
 
 st.markdown("### 📝 New Stock Entry")
 
-order_number = st.text_input(
-    "Order Number *", 
-    value=st.session_state.order_number,
-    placeholder="Enter order number",
-    key="order_input"
-)
+# Order number with selectbox for auto-complete
+order_category_map = get_dump_data()
+all_orders = list(order_category_map.keys())
 
-if order_number != st.session_state.order_number:
-    st.session_state.order_number = order_number
-    st.rerun()
+order_number = st.selectbox(
+    "Order Number *",
+    options=[""] + all_orders,
+    index=0,
+    placeholder="Type or select order number"
+)
 
 category = None
 if order_number:
-    category = get_category_by_order(order_number)
+    category = order_category_map.get(order_number, None)
     if category:
         st.markdown(f"""
         <div class="category-box">
@@ -212,7 +209,6 @@ if st.button("💾 Save Record", use_container_width=True):
             if image_url and save_to_sheet(order_number, category, image_url):
                 st.success("✅ Saved!")
                 st.balloons()
-                st.session_state.order_number = ""
                 st.rerun()
 
 with st.sidebar:
