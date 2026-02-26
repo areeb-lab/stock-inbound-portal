@@ -149,7 +149,7 @@ with col_header:
     st.markdown("""
     <div class="main-header">
         <div class="header-title">🚚 Fleek-Inbound 📦</div>
-        <div class="header-subtitle">Stock ki photo aur order number save karein</div>
+        <div class="header-subtitle">Jahan Vintage Wahan Fleek</div>
     </div>
     """, unsafe_allow_html=True)
 
