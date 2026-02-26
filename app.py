@@ -7,7 +7,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import requests
 import base64
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centered")
 
@@ -114,48 +114,45 @@ def delete_from_sheet(row_index):
         return False
 
 def create_donut_chart(pickup_ready, inbound_done):
+    fig, ax = plt.subplots(figsize=(4, 4))
+    fig.patch.set_alpha(0)
+    ax.set_facecolor('none')
+    
     total = pickup_ready + inbound_done
     if total == 0:
         total = 1
+        pickup_ready = 1
     
-    pickup_pct = (pickup_ready / total) * 100
-    inbound_pct = (inbound_done / total) * 100
+    sizes = [pickup_ready, inbound_done]
+    colors = ['#E67E22', '#27AE60']
+    labels = ['PICKUP_READY', 'INBOUND_DONE']
     
-    fig = go.Figure(data=[go.Pie(
-        labels=['PICKUP_READY', 'INBOUND_DONE'],
-        values=[pickup_ready, inbound_done],
-        hole=0.6,
-        marker_colors=['#E67E22', '#27AE60'],
-        textinfo='value',
-        textfont_size=20,
-        textfont_color='white',
-        hovertemplate="<b>%{label}</b><br>Count: %{value}<br>Percent: %{percent}<extra></extra>"
-    )])
-    
-    fig.update_layout(
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.2,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=12)
-        ),
-        annotations=[
-            dict(
-                text=f'<b>{total}</b><br>Total',
-                x=0.5, y=0.5,
-                font_size=18,
-                showarrow=False
-            )
-        ],
-        margin=dict(t=20, b=60, l=20, r=20),
-        height=300,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
+    # Create donut
+    wedges, texts, autotexts = ax.pie(
+        sizes, 
+        colors=colors, 
+        autopct=lambda pct: f'{int(pct/100*total)}',
+        startangle=90,
+        wedgeprops=dict(width=0.4),
+        textprops={'fontsize': 14, 'fontweight': 'bold', 'color': 'white'}
     )
     
+    # Add center text
+    ax.text(0, 0, f'{total}\nTotal', ha='center', va='center', fontsize=14, fontweight='bold', color='white')
+    
+    # Add legend
+    ax.legend(
+        wedges, 
+        [f'{labels[i]}\n{sizes[i]/total*100:.1f}%' for i in range(len(labels))],
+        loc='center',
+        bbox_to_anchor=(0.5, -0.15),
+        ncol=2,
+        fontsize=9,
+        frameon=False,
+        labelcolor='white'
+    )
+    
+    plt.tight_layout()
     return fig
 
 st.markdown("""
@@ -193,7 +190,8 @@ inbound_done = get_inbound_done_count()
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     fig = create_donut_chart(pickup_ready, inbound_done)
-    st.plotly_chart(fig, use_container_width=True)
+    st.pyplot(fig, transparent=True)
+    plt.close()
 
 # RECORDS BUTTON
 col_spacer, col_btn = st.columns([4, 1])
