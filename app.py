@@ -7,11 +7,14 @@ import gspread
 from google.oauth2.service_account import Credentials
 import requests
 import base64
+from streamlit_js_eval import streamlit_js_eval
 
 st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centered")
 
 if 'show_records' not in st.session_state:
     st.session_state.show_records = False
+if 'order_number' not in st.session_state:
+    st.session_state.order_number = ""
 
 if st.sidebar.button("🔄 Clear Cache"):
     st.cache_resource.clear()
@@ -114,21 +117,10 @@ st.markdown("""
         margin: 10px 0; 
         border-left: 4px solid #4CAF50;
     }
+    #order_input {
+        font-size: 18px;
+    }
 </style>
-""", unsafe_allow_html=True)
-
-# Custom JavaScript for real-time input
-st.markdown("""
-<script>
-    const doc = window.parent.document;
-    const inputs = doc.querySelectorAll('input[type="text"]');
-    inputs.forEach(input => {
-        input.addEventListener('input', function() {
-            const event = new Event('change', { bubbles: true });
-            this.dispatchEvent(event);
-        });
-    });
-</script>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-header"><h1>🚚 Fleek-Inbound 📦</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
@@ -172,19 +164,50 @@ if st.session_state.show_records:
 
 st.markdown("### 📝 New Stock Entry")
 
-# Using text_input with label_visibility for cleaner look
-order_number = st.text_input(
-    "Order Number *", 
-    placeholder="Enter order number",
-    key="order_input",
-    label_visibility="visible"
+# JavaScript to detect typing and auto-submit
+st.markdown("""
+<script>
+    setTimeout(function() {
+        const doc = window.parent.document;
+        const input = doc.querySelector('input[aria-label="Order Number *"]');
+        if (input) {
+            let timeout = null;
+            input.addEventListener('input', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(function() {
+                    input.blur();
+                    input.focus();
+                }, 500);
+            });
+        }
+    }, 1000);
+</script>
+""", unsafe_allow_html=True)
+
+# Real-time order input using streamlit-js-eval
+order_from_js = streamlit_js_eval(
+    js_expressions="""
+    (function() {
+        const input = window.parent.document.querySelector('input[aria-label="Order Number *"]');
+        return input ? input.value : '';
+    })()
+    """,
+    key="get_order_value"
 )
 
-# Fetch button for category
-col1, col2 = st.columns([3, 1])
-with col2:
-    fetch_clicked = st.button("🔍 Fetch", use_container_width=True)
+order_number = st.text_input(
+    "Order Number *", 
+    value=st.session_state.order_number,
+    placeholder="Enter order number (auto-fetch)",
+    key="order_input"
+)
 
+# Update session state
+if order_number != st.session_state.order_number:
+    st.session_state.order_number = order_number
+    st.rerun()
+
+# Auto-fetch category
 category = None
 if order_number:
     category = get_category_by_order(order_number)
@@ -225,6 +248,7 @@ if st.button("💾 Save Record", use_container_width=True):
             if image_url and save_to_sheet(order_number, category, image_url):
                 st.success("✅ Saved!")
                 st.balloons()
+                st.session_state.order_number = ""
                 st.rerun()
 
 with st.sidebar:
