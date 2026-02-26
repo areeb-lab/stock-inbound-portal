@@ -36,6 +36,13 @@ st.markdown("""
         border-left: 4px solid #4CAF50;
         margin: 10px 0;
     }
+    .vendor-box {
+        background: #1e3a5f;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 4px solid #E67E22;
+        margin: 10px 0;
+    }
     .stButton > button {
         background: #4CAF50;
         color: white;
@@ -69,12 +76,16 @@ def get_dump_data():
     spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
     dump_sheet = spreadsheet.worksheet("Dump")
     order_numbers = dump_sheet.col_values(5)[1:]
+    vendors = dump_sheet.col_values(54)[1:]
     categories = dump_sheet.col_values(90)[1:]
     order_category_map = {}
+    order_vendor_map = {}
     for i, order in enumerate(order_numbers):
         if i < len(categories):
             order_category_map[str(order).strip()] = categories[i]
-    return order_category_map, order_numbers
+        if i < len(vendors):
+            order_vendor_map[str(order).strip()] = vendors[i]
+    return order_category_map, order_vendor_map, order_numbers
 
 @st.cache_data(ttl=60)
 def get_scorecard_counts():
@@ -124,12 +135,12 @@ def upload_to_imgbb(image):
     )
     return response.json()["data"]["url"]
 
-def save_record(order_number, category, image_url):
+def save_record(order_number, category, vendor, image_url):
     client = get_gspread_client()
     spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
     sheet = spreadsheet.worksheet("inbound")
     date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    sheet.append_row([date_now, order_number, category, image_url])
+    sheet.append_row([date_now, order_number, category, vendor, image_url])
     st.cache_data.clear()
 
 if 'form_key' not in st.session_state:
@@ -137,7 +148,7 @@ if 'form_key' not in st.session_state:
 if 'success' not in st.session_state:
     st.session_state.success = False
 
-order_category_map, order_list = get_dump_data()
+order_category_map, order_vendor_map, order_list = get_dump_data()
 pickup_ready, inbound_done = get_scorecard_counts()
 total = pickup_ready + inbound_done
 pickup_pct = (pickup_ready / total * 100) if total > 0 else 0
@@ -208,13 +219,24 @@ with col2:
         key=f"order_{st.session_state.form_key}"
     )
     category = ""
+    vendor = ""
     if selected_order:
         category = order_category_map.get(str(selected_order).strip(), "Category not found")
-        st.markdown(f"""
-        <div class="category-box">
-            <strong>Category:</strong> {category}
-        </div>
-        """, unsafe_allow_html=True)
+        vendor = order_vendor_map.get(str(selected_order).strip(), "Vendor not found")
+        
+        col_cat, col_ven = st.columns(2)
+        with col_cat:
+            st.markdown(f"""
+            <div class="category-box">
+                <strong>📦 Category:</strong><br>{category}
+            </div>
+            """, unsafe_allow_html=True)
+        with col_ven:
+            st.markdown(f"""
+            <div class="vendor-box">
+                <strong>🏪 Vendor:</strong><br>{vendor}
+            </div>
+            """, unsafe_allow_html=True)
     
     st.markdown("### 📷 Stock Image")
     image_option = st.radio(
@@ -253,19 +275,19 @@ with col2:
         else:
             with st.spinner("Saving..."):
                 image_url = upload_to_imgbb(image)
-                save_record(selected_order, category, image_url)
+                save_record(selected_order, category, vendor, image_url)
                 st.success("✅ Record saved successfully!")
                 st.session_state.success = True
                 st.session_state.form_key += 1
                 st.rerun()
     
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("📋 Records"):
+    if st.button("📜 History"):
         st.session_state.show_records = not st.session_state.get('show_records', False)
 
 if st.session_state.get('show_records', False):
     st.markdown("---")
-    st.markdown("### 📋 Today's Records")
+    st.markdown("### 📜 Today's History")
     client = get_gspread_client()
     spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
     sheet = spreadsheet.worksheet("inbound")
@@ -274,4 +296,4 @@ if st.session_state.get('show_records', False):
         df = pd.DataFrame(records)
         st.dataframe(df, use_container_width=True)
     else:
-        st.info("No records found.")
+        st.info("No history found.")
