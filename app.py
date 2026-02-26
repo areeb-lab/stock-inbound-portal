@@ -10,6 +10,11 @@ import base64
 
 st.set_page_config(page_title="Stock Inbound Portal", page_icon="📦", layout="wide")
 
+# CACHE CLEAR BUTTON
+if st.sidebar.button("🔄 Clear Cache"):
+    st.cache_resource.clear()
+    st.rerun()
+
 @st.cache_resource
 def get_google_client():
     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -22,17 +27,12 @@ def get_google_sheet():
     sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).sheet1
     return sheet
 
-# Category fetch from dump sheet (WITH DEBUG)
+# Category fetch from Dump sheet (FIXED)
 def get_category_by_order(order_num):
     try:
         client = get_google_client()
         spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
-        
-        # DEBUG - Show all worksheet names
-        all_sheets = [ws.title for ws in spreadsheet.worksheets()]
-        st.info(f"📋 Available sheets: {all_sheets}")
-        
-        dump_sheet = spreadsheet.worksheet("dump")  # Change this name if different
+        dump_sheet = spreadsheet.worksheet("Dump")  # Capital D
         
         # Column E (fleek_id) = 5, Column CL (category) = 90
         order_numbers = dump_sheet.col_values(5)[1:]
