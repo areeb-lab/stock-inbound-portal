@@ -46,6 +46,28 @@ def get_dump_data():
     except:
         return {}
 
+# Get Pickup Ready count from Score Card tab
+@st.cache_data(ttl=60)
+def get_pickup_ready_count():
+    try:
+        client = get_google_client()
+        spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
+        score_card_sheet = spreadsheet.worksheet("score card")
+        orders = score_card_sheet.col_values(3)[1:]  # Column C = Fleek order ID
+        return len([o for o in orders if o.strip()])  # Count non-empty orders
+    except Exception as e:
+        return 0
+
+# Get Inbound Done count from Sheet1
+@st.cache_data(ttl=60)
+def get_inbound_done_count():
+    try:
+        sheet = get_google_sheet()
+        records = sheet.get_all_records()
+        return len(records)
+    except:
+        return 0
+
 def get_category_by_order(order_num):
     try:
         order_category_map = get_dump_data()
@@ -114,11 +136,58 @@ st.markdown("""
         margin: 10px 0; 
         border-left: 4px solid #4CAF50;
     }
+    .scorecard {
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        color: white;
+        font-weight: bold;
+    }
+    .pickup-ready {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .inbound-done {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .score-number {
+        font-size: 36px;
+        margin: 10px 0;
+    }
+    .score-label {
+        font-size: 14px;
+        opacity: 0.9;
+    }
 </style>
 """, unsafe_allow_html=True)
 
+# HEADER WITH SCORECARDS
 st.markdown('<div class="main-header"><h1>🚚 Fleek-Inbound 📦</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
 
+# SCORECARDS
+pickup_ready = get_pickup_ready_count()
+inbound_done = get_inbound_done_count()
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown(f"""
+    <div class="scorecard pickup-ready">
+        <div class="score-label">📦 Pickup Ready</div>
+        <div class="score-number">{pickup_ready}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    st.markdown(f"""
+    <div class="scorecard inbound-done">
+        <div class="score-label">✅ Inbound Done</div>
+        <div class="score-number">{inbound_done}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# RECORDS BUTTON
 col_spacer, col_btn = st.columns([4, 1])
 with col_btn:
     if st.button("📋 Records", use_container_width=True):
@@ -208,6 +277,7 @@ if st.button("🚚 Chalo Inbound Mai", use_container_width=True):
             if image_url and save_to_sheet(order_number, category, image_url):
                 st.success("✅ Saved!")
                 st.balloons()
+                st.cache_data.clear()  # Refresh scorecard
                 st.rerun()
 
 with st.sidebar:
