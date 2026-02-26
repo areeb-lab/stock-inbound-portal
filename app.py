@@ -1,4 +1,4 @@
-import streamlit as st
+=import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from PIL import Image
@@ -7,6 +7,7 @@ import base64
 from io import BytesIO
 from datetime import datetime
 import pandas as pd
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="wide")
 
@@ -44,49 +45,21 @@ st.markdown("""
         border-radius: 10px;
         width: 100%;
     }
+    .camera-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        cursor: pointer;
+        width: 100%;
+        margin: 10px 0;
+    }
+    .camera-btn:hover {
+        opacity: 0.9;
+    }
 </style>
-""", unsafe_allow_html=True)
-
-# Back Camera Force Script - ye har baar run hoga
-st.markdown("""
-<script>
-function forceBackCamera() {
-    const checkVideo = setInterval(() => {
-        const video = document.querySelector('video');
-        if (video && video.srcObject) {
-            const tracks = video.srcObject.getVideoTracks();
-            if (tracks.length > 0) {
-                const settings = tracks[0].getSettings();
-                if (settings.facingMode !== 'environment') {
-                    tracks.forEach(track => track.stop());
-                    navigator.mediaDevices.getUserMedia({
-                        video: { 
-                            facingMode: { exact: "environment" },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        }
-                    }).then(stream => {
-                        video.srcObject = stream;
-                    }).catch(err => {
-                        navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: "environment" }
-                        }).then(stream => {
-                            video.srcObject = stream;
-                        });
-                    });
-                }
-            }
-        }
-    }, 500);
-    setTimeout(() => clearInterval(checkVideo), 10000);
-}
-forceBackCamera();
-
-const observer = new MutationObserver(() => {
-    forceBackCamera();
-});
-observer.observe(document.body, { childList: true, subtree: true });
-</script>
 """, unsafe_allow_html=True)
 
 def play_beep_sound():
@@ -262,28 +235,31 @@ with col2:
             <strong>Category:</strong> {category}
         </div>
         """, unsafe_allow_html=True)
-    st.markdown("### 📷 Stock Image")
-    image_option = st.radio(
-        "Select option:", 
-        ["📷 Take Photo", "📁 Upload Photo"], 
-        horizontal=True,
-        key=f"option_{st.session_state.form_key}"
+    
+    st.markdown("### 📷 Stock Image (Back Camera)")
+    
+    # Custom HTML file input with capture="environment" for back camera
+    st.markdown(f"""
+    <input type="file" accept="image/*" capture="environment" id="camera_input_{st.session_state.form_key}" 
+           onchange="handleFile(this)" style="display:none;">
+    <button class="camera-btn" onclick="document.getElementById('camera_input_{st.session_state.form_key}').click()">
+        📸 Take Photo (Back Camera)
+    </button>
+    """, unsafe_allow_html=True)
+    
+    # File uploader for receiving the image
+    uploaded_file = st.file_uploader(
+        "Or upload from gallery",
+        type=["jpg", "jpeg", "png"],
+        key=f"upload_{st.session_state.form_key}",
+        label_visibility="visible"
     )
+    
     image = None
-    if image_option == "📷 Take Photo":
-        camera_image = st.camera_input("Take a photo", key=f"camera_{st.session_state.form_key}")
-        if camera_image:
-            image = Image.open(camera_image)
-    else:
-        uploaded_file = st.file_uploader(
-            "Upload image", 
-            type=["jpg", "jpeg", "png"],
-            key=f"upload_{st.session_state.form_key}"
-        )
-        if uploaded_file:
-            image = Image.open(uploaded_file)
-    if image:
+    if uploaded_file:
+        image = Image.open(uploaded_file)
         st.image(image, caption="Preview", use_column_width=True)
+    
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🚚 Chalo Inbound Mai", type="primary"):
         if not selected_order:
