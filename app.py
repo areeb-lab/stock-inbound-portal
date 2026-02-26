@@ -8,7 +8,7 @@ from google.oauth2.service_account import Credentials
 import requests
 import base64
 
-st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centered")
+st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="wide")
 
 if 'show_records' not in st.session_state:
     st.session_state.show_records = False
@@ -112,66 +112,6 @@ def delete_from_sheet(row_index):
     except:
         return False
 
-def create_donut_html(pickup_ready, inbound_done):
-    total = pickup_ready + inbound_done
-    if total == 0:
-        total = 1
-        pickup_ready = 1
-    
-    pickup_pct = (pickup_ready / total) * 100
-    inbound_pct = (inbound_done / total) * 100
-    
-    # Calculate degrees for conic gradient
-    pickup_deg = (pickup_pct / 100) * 360
-    
-    html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
-        <div style="position: relative; width: 200px; height: 200px;">
-            <div style="
-                width: 200px;
-                height: 200px;
-                border-radius: 50%;
-                background: conic-gradient(
-                    #E67E22 0deg {pickup_deg}deg,
-                    #27AE60 {pickup_deg}deg 360deg
-                );
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            ">
-                <div style="
-                    width: 120px;
-                    height: 120px;
-                    border-radius: 50%;
-                    background: #0e1117;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    flex-direction: column;
-                ">
-                    <span style="font-size: 24px; font-weight: bold; color: white;">{total}</span>
-                    <span style="font-size: 12px; color: #888;">Total</span>
-                </div>
-            </div>
-            
-            <!-- Pickup Ready Label -->
-            <div style="position: absolute; top: 50%; left: -80px; transform: translateY(-50%); text-align: right;">
-                <div style="font-size: 20px; font-weight: bold; color: #E67E22;">{pickup_ready}</div>
-                <div style="font-size: 10px; color: #888;">PICKUP_READY</div>
-                <div style="font-size: 10px; color: #888;">{pickup_pct:.1f}%</div>
-            </div>
-            
-            <!-- Inbound Done Label -->
-            <div style="position: absolute; top: 50%; right: -80px; transform: translateY(-50%); text-align: left;">
-                <div style="font-size: 20px; font-weight: bold; color: #27AE60;">{inbound_done}</div>
-                <div style="font-size: 10px; color: #888;">INBOUND_DONE</div>
-                <div style="font-size: 10px; color: #888;">{inbound_pct:.1f}%</div>
-            </div>
-        </div>
-    </div>
-    """
-    return html
-
 st.markdown("""
 <style>
     .main-header {
@@ -179,8 +119,7 @@ st.markdown("""
         padding: 20px; 
         background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%); 
         color: white; 
-        border-radius: 10px; 
-        margin-bottom: 20px;
+        border-radius: 10px;
     }
     .stButton>button {
         width: 100%; 
@@ -197,14 +136,69 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# HEADER
-st.markdown('<div class="main-header"><h1>🚚 Fleek-Inbound 📦</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
-
-# DONUT CHART SCORECARD (Pure HTML/CSS)
+# Get counts for scorecard
 pickup_ready = get_pickup_ready_count()
 inbound_done = get_inbound_done_count()
+total = pickup_ready + inbound_done
+if total == 0:
+    total = 1
+pickup_pct = (pickup_ready / total) * 100
+inbound_pct = (inbound_done / total) * 100
+pickup_deg = (pickup_pct / 100) * 360
 
-st.markdown(create_donut_html(pickup_ready, inbound_done), unsafe_allow_html=True)
+# HEADER WITH SCORECARD SIDE BY SIDE
+col_header, col_chart = st.columns([2, 1])
+
+with col_header:
+    st.markdown('<div class="main-header"><h1>🚚 Fleek-Inbound 📦</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
+
+with col_chart:
+    st.markdown(f"""
+    <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+        <div style="position: relative; width: 150px; height: 150px;">
+            <div style="
+                width: 150px;
+                height: 150px;
+                border-radius: 50%;
+                background: conic-gradient(
+                    #E67E22 0deg {pickup_deg}deg,
+                    #27AE60 {pickup_deg}deg 360deg
+                );
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            ">
+                <div style="
+                    width: 90px;
+                    height: 90px;
+                    border-radius: 50%;
+                    background: #0e1117;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    flex-direction: column;
+                ">
+                    <span style="font-size: 20px; font-weight: bold; color: white;">{total}</span>
+                    <span style="font-size: 10px; color: #888;">Total</span>
+                </div>
+            </div>
+        </div>
+        <div style="margin-left: 15px;">
+            <div style="margin-bottom: 10px;">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #E67E22; border-radius: 2px; margin-right: 5px;"></span>
+                <span style="color: white; font-size: 12px;">PICKUP_READY</span>
+                <div style="color: #E67E22; font-weight: bold; font-size: 16px;">{pickup_ready} <span style="font-size: 10px; color: #888;">({pickup_pct:.1f}%)</span></div>
+            </div>
+            <div>
+                <span style="display: inline-block; width: 12px; height: 12px; background: #27AE60; border-radius: 2px; margin-right: 5px;"></span>
+                <span style="color: white; font-size: 12px;">INBOUND_DONE</span>
+                <div style="color: #27AE60; font-weight: bold; font-size: 16px;">{inbound_done} <span style="font-size: 10px; color: #888;">({inbound_pct:.1f}%)</span></div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 # RECORDS BUTTON
 col_spacer, col_btn = st.columns([4, 1])
@@ -244,60 +238,64 @@ if st.session_state.show_records:
                         st.rerun()
     st.markdown("---")
 
-st.markdown("### 📝 New Stock Entry")
+# MAIN FORM - CENTERED
+col_left, col_center, col_right = st.columns([1, 2, 1])
 
-order_category_map = get_dump_data()
-all_orders = list(order_category_map.keys())
+with col_center:
+    st.markdown("### 📝 New Stock Entry")
 
-order_number = st.selectbox(
-    "Order Number *",
-    options=[""] + all_orders,
-    index=0,
-    placeholder="Type or select order number"
-)
+    order_category_map = get_dump_data()
+    all_orders = list(order_category_map.keys())
 
-category = None
-if order_number:
-    category = order_category_map.get(order_number, None)
-    if category:
-        st.markdown(f"""
-        <div class="category-box">
-            📦 <strong>Category:</strong> {category}
-        </div>
-        """, unsafe_allow_html=True)
+    order_number = st.selectbox(
+        "Order Number *",
+        options=[""] + all_orders,
+        index=0,
+        placeholder="Type or select order number"
+    )
+
+    category = None
+    if order_number:
+        category = order_category_map.get(order_number, None)
+        if category:
+            st.markdown(f"""
+            <div class="category-box">
+                📦 <strong>Category:</strong> {category}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ Category not found for this order number")
+
+    st.markdown("#### 📷 Stock Image")
+    option = st.radio("Select option:", ["📷 Take Photo", "📤 Upload Photo"], horizontal=True)
+
+    image_data = None
+    if option == "📷 Take Photo":
+        camera_photo = st.camera_input("Take a photo")
+        if camera_photo:
+            image_data = camera_photo
     else:
-        st.warning("⚠️ Category not found for this order number")
+        uploaded_file = st.file_uploader("Upload image", type=['jpg', 'jpeg', 'png'])
+        if uploaded_file:
+            image_data = uploaded_file
 
-st.markdown("#### 📷 Stock Image")
-option = st.radio("Select option:", ["📷 Take Photo", "📤 Upload Photo"], horizontal=True)
-
-image_data = None
-if option == "📷 Take Photo":
-    camera_photo = st.camera_input("Take a photo")
-    if camera_photo:
-        image_data = camera_photo
-else:
-    uploaded_file = st.file_uploader("Upload image", type=['jpg', 'jpeg', 'png'])
-    if uploaded_file:
-        image_data = uploaded_file
-
-if st.button("🚚 Chalo Inbound Mai", use_container_width=True):
-    if not order_number:
-        st.error("⚠️ Order Number is required!")
-    elif not category:
-        st.error("⚠️ Category not found! Please check order number.")
-    elif not image_data:
-        st.error("⚠️ Please take or upload an image!")
-    else:
-        with st.spinner("Uploading..."):
-            image = Image.open(image_data)
-            image.thumbnail((800, 800))
-            image_url = upload_to_imgbb(image)
-            if image_url and save_to_sheet(order_number, category, image_url):
-                st.success("✅ Saved!")
-                st.balloons()
-                st.cache_data.clear()
-                st.rerun()
+    if st.button("🚚 Chalo Inbound Mai", use_container_width=True):
+        if not order_number:
+            st.error("⚠️ Order Number is required!")
+        elif not category:
+            st.error("⚠️ Category not found! Please check order number.")
+        elif not image_data:
+            st.error("⚠️ Please take or upload an image!")
+        else:
+            with st.spinner("Uploading..."):
+                image = Image.open(image_data)
+                image.thumbnail((800, 800))
+                image_url = upload_to_imgbb(image)
+                if image_url and save_to_sheet(order_number, category, image_url):
+                    st.success("✅ Saved!")
+                    st.balloons()
+                    st.cache_data.clear()
+                    st.rerun()
 
 with st.sidebar:
     st.markdown("### 📊 Dashboard")
