@@ -7,7 +7,6 @@ import gspread
 from google.oauth2.service_account import Credentials
 import requests
 import base64
-from st_keyup import st_keyup
 
 st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centered")
 
@@ -118,6 +117,20 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Custom JavaScript for real-time input
+st.markdown("""
+<script>
+    const doc = window.parent.document;
+    const inputs = doc.querySelectorAll('input[type="text"]');
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const event = new Event('change', { bubbles: true });
+            this.dispatchEvent(event);
+        });
+    });
+</script>
+""", unsafe_allow_html=True)
+
 st.markdown('<div class="main-header"><h1>🚚 Fleek-Inbound 📦</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
 
 col_spacer, col_btn = st.columns([4, 1])
@@ -137,7 +150,7 @@ if st.session_state.show_records:
     if st.button("🔄 Refresh", use_container_width=True):
         st.rerun()
     records = load_data()
-    search = st.text_input("🔍 Search by Order #", placeholder="Search...")
+    search = st.text_input("🔍 Search by Order #", placeholder="Search...", key="search_box")
     if search:
         records = [r for r in records if search.lower() in str(r.get('Order Number', '')).lower()]
     st.markdown(f"**Total Records: {len(records)}**")
@@ -159,7 +172,18 @@ if st.session_state.show_records:
 
 st.markdown("### 📝 New Stock Entry")
 
-order_number = st_keyup("Order Number *", placeholder="Enter order number", debounce=300)
+# Using text_input with label_visibility for cleaner look
+order_number = st.text_input(
+    "Order Number *", 
+    placeholder="Enter order number",
+    key="order_input",
+    label_visibility="visible"
+)
+
+# Fetch button for category
+col1, col2 = st.columns([3, 1])
+with col2:
+    fetch_clicked = st.button("🔍 Fetch", use_container_width=True)
 
 category = None
 if order_number:
