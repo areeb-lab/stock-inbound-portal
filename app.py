@@ -13,6 +13,10 @@ st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centere
 # Session state for showing records
 if 'show_records' not in st.session_state:
     st.session_state.show_records = False
+if 'order_number' not in st.session_state:
+    st.session_state.order_number = ""
+if 'category' not in st.session_state:
+    st.session_state.category = None
 
 # CACHE CLEAR BUTTON
 if st.sidebar.button("🔄 Clear Cache"):
@@ -31,8 +35,9 @@ def get_google_sheet():
     sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).sheet1
     return sheet
 
-# Category fetch from Dump sheet
-def get_category_by_order(order_num):
+# Cache the dump sheet data
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_dump_data():
     try:
         client = get_google_client()
         spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
@@ -41,14 +46,22 @@ def get_category_by_order(order_num):
         order_numbers = dump_sheet.col_values(5)[1:]
         categories = dump_sheet.col_values(90)[1:]
         
+        # Create dictionary for fast lookup
+        order_category_map = {}
         for i, order in enumerate(order_numbers):
-            if str(order).strip() == str(order_num).strip():
-                if i < len(categories):
-                    return categories[i]
-                return None
-        return None
+            if i < len(categories):
+                order_category_map[str(order).strip()] = categories[i]
+        
+        return order_category_map
     except Exception as e:
-        st.error(f"Error: {e}")
+        return {}
+
+# Category fetch from cached data
+def get_category_by_order(order_num):
+    try:
+        order_category_map = get_dump_data()
+        return order_category_map.get(str(order_num).strip(), None)
+    except Exception as e:
         return None
 
 def upload_to_imgbb(image):
@@ -92,6 +105,14 @@ def delete_from_sheet(row_index):
     except:
         return False
 
+# Callback function for order number change
+def on_order_change():
+    order_num = st.session_state.order_input
+    if order_num:
+        st.session_state.category = get_category_by_order(order_num)
+    else:
+        st.session_state.category = None
+
 st.markdown("""
 <style>
     .main-header {
@@ -113,12 +134,6 @@ st.markdown("""
         border-radius: 8px; 
         margin: 10px 0; 
         border-left: 4px solid #4CAF50;
-    }
-    .records-icon {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 999;
     }
     .center-form {
         max-width: 500px;
@@ -180,21 +195,25 @@ if st.session_state.show_records:
 # MAIN FORM - CENTERED
 st.markdown("### 📝 New Stock Entry")
 
-order_number = st.text_input("Order Number *", placeholder="Enter order number")
+# Order Number with on_change callback - AUTO FETCH without Enter
+order_number = st.text_input(
+    "Order Number *", 
+    placeholder="Enter order number",
+    key="order_input",
+    on_change=on_order_change
+)
 
-# AUTO-FETCH CATEGORY
-category = None
+# Show Category instantly
+category = st.session_state.category
 if order_number:
-    with st.spinner("🔍 Fetching category..."):
-        category = get_category_by_order(order_number)
-        if category:
-            st.markdown(f"""
-            <div class="category-box">
-                📦 <strong>Category:</strong> {category}
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ Category not found for this order number")
+    if category:
+        st.markdown(f"""
+        <div class="category-box">
+            📦 <strong>Category:</strong> {category}
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ Category not found for this order number")
 
 st.markdown("#### 📷 Stock Image")
 option = st.radio("Select option:", ["📷 Take Photo", "📤 Upload Photo"], horizontal=True)
@@ -225,6 +244,9 @@ if st.button("💾 Save Record", use_container_width=True):
             if image_url and save_to_sheet(order_number, category, image_url):
                 st.success("✅ Saved!")
                 st.balloons()
+                # Clear the form
+                st.session_state.order_input = ""
+                st.session_state.category = None
                 st.rerun()
 
 # SIDEBAR
