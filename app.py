@@ -22,17 +22,22 @@ def get_google_sheet():
     sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).sheet1
     return sheet
 
-# Category fetch from dump sheet (FIXED - skip header)
+# Category fetch from dump sheet (WITH DEBUG)
 def get_category_by_order(order_num):
     try:
         client = get_google_client()
-        dump_sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).worksheet("dump")
+        spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
+        
+        # DEBUG - Show all worksheet names
+        all_sheets = [ws.title for ws in spreadsheet.worksheets()]
+        st.info(f"📋 Available sheets: {all_sheets}")
+        
+        dump_sheet = spreadsheet.worksheet("dump")  # Change this name if different
         
         # Column E (fleek_id) = 5, Column CL (category) = 90
-        order_numbers = dump_sheet.col_values(5)[1:]   # Skip header row
-        categories = dump_sheet.col_values(90)[1:]      # Skip header row
+        order_numbers = dump_sheet.col_values(5)[1:]
+        categories = dump_sheet.col_values(90)[1:]
         
-        # Order number match karo
         for i, order in enumerate(order_numbers):
             if str(order).strip() == str(order_num).strip():
                 if i < len(categories):
