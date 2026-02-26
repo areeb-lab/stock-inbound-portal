@@ -7,7 +7,6 @@ import gspread
 from google.oauth2.service_account import Credentials
 import requests
 import base64
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centered")
 
@@ -113,47 +112,65 @@ def delete_from_sheet(row_index):
     except:
         return False
 
-def create_donut_chart(pickup_ready, inbound_done):
-    fig, ax = plt.subplots(figsize=(4, 4))
-    fig.patch.set_alpha(0)
-    ax.set_facecolor('none')
-    
+def create_donut_html(pickup_ready, inbound_done):
     total = pickup_ready + inbound_done
     if total == 0:
         total = 1
         pickup_ready = 1
     
-    sizes = [pickup_ready, inbound_done]
-    colors = ['#E67E22', '#27AE60']
-    labels = ['PICKUP_READY', 'INBOUND_DONE']
+    pickup_pct = (pickup_ready / total) * 100
+    inbound_pct = (inbound_done / total) * 100
     
-    # Create donut
-    wedges, texts, autotexts = ax.pie(
-        sizes, 
-        colors=colors, 
-        autopct=lambda pct: f'{int(pct/100*total)}',
-        startangle=90,
-        wedgeprops=dict(width=0.4),
-        textprops={'fontsize': 14, 'fontweight': 'bold', 'color': 'white'}
-    )
+    # Calculate degrees for conic gradient
+    pickup_deg = (pickup_pct / 100) * 360
     
-    # Add center text
-    ax.text(0, 0, f'{total}\nTotal', ha='center', va='center', fontsize=14, fontweight='bold', color='white')
-    
-    # Add legend
-    ax.legend(
-        wedges, 
-        [f'{labels[i]}\n{sizes[i]/total*100:.1f}%' for i in range(len(labels))],
-        loc='center',
-        bbox_to_anchor=(0.5, -0.15),
-        ncol=2,
-        fontsize=9,
-        frameon=False,
-        labelcolor='white'
-    )
-    
-    plt.tight_layout()
-    return fig
+    html = f"""
+    <div style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
+        <div style="position: relative; width: 200px; height: 200px;">
+            <div style="
+                width: 200px;
+                height: 200px;
+                border-radius: 50%;
+                background: conic-gradient(
+                    #E67E22 0deg {pickup_deg}deg,
+                    #27AE60 {pickup_deg}deg 360deg
+                );
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            ">
+                <div style="
+                    width: 120px;
+                    height: 120px;
+                    border-radius: 50%;
+                    background: #0e1117;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    flex-direction: column;
+                ">
+                    <span style="font-size: 24px; font-weight: bold; color: white;">{total}</span>
+                    <span style="font-size: 12px; color: #888;">Total</span>
+                </div>
+            </div>
+            
+            <!-- Pickup Ready Label -->
+            <div style="position: absolute; top: 50%; left: -80px; transform: translateY(-50%); text-align: right;">
+                <div style="font-size: 20px; font-weight: bold; color: #E67E22;">{pickup_ready}</div>
+                <div style="font-size: 10px; color: #888;">PICKUP_READY</div>
+                <div style="font-size: 10px; color: #888;">{pickup_pct:.1f}%</div>
+            </div>
+            
+            <!-- Inbound Done Label -->
+            <div style="position: absolute; top: 50%; right: -80px; transform: translateY(-50%); text-align: left;">
+                <div style="font-size: 20px; font-weight: bold; color: #27AE60;">{inbound_done}</div>
+                <div style="font-size: 10px; color: #888;">INBOUND_DONE</div>
+                <div style="font-size: 10px; color: #888;">{inbound_pct:.1f}%</div>
+            </div>
+        </div>
+    </div>
+    """
+    return html
 
 st.markdown("""
 <style>
@@ -183,15 +200,11 @@ st.markdown("""
 # HEADER
 st.markdown('<div class="main-header"><h1>🚚 Fleek-Inbound 📦</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
 
-# DONUT CHART SCORECARD
+# DONUT CHART SCORECARD (Pure HTML/CSS)
 pickup_ready = get_pickup_ready_count()
 inbound_done = get_inbound_done_count()
 
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    fig = create_donut_chart(pickup_ready, inbound_done)
-    st.pyplot(fig, transparent=True)
-    plt.close()
+st.markdown(create_donut_html(pickup_ready, inbound_done), unsafe_allow_html=True)
 
 # RECORDS BUTTON
 col_spacer, col_btn = st.columns([4, 1])
