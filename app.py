@@ -117,9 +117,6 @@ st.markdown("""
         margin: 10px 0; 
         border-left: 4px solid #4CAF50;
     }
-    #order_input {
-        font-size: 18px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -164,50 +161,17 @@ if st.session_state.show_records:
 
 st.markdown("### 📝 New Stock Entry")
 
-# JavaScript to detect typing and auto-submit
-st.markdown("""
-<script>
-    setTimeout(function() {
-        const doc = window.parent.document;
-        const input = doc.querySelector('input[aria-label="Order Number *"]');
-        if (input) {
-            let timeout = null;
-            input.addEventListener('input', function() {
-                clearTimeout(timeout);
-                timeout = setTimeout(function() {
-                    input.blur();
-                    input.focus();
-                }, 500);
-            });
-        }
-    }, 1000);
-</script>
-""", unsafe_allow_html=True)
-
-# Real-time order input using streamlit-js-eval
-order_from_js = streamlit_js_eval(
-    js_expressions="""
-    (function() {
-        const input = window.parent.document.querySelector('input[aria-label="Order Number *"]');
-        return input ? input.value : '';
-    })()
-    """,
-    key="get_order_value"
-)
-
 order_number = st.text_input(
     "Order Number *", 
     value=st.session_state.order_number,
-    placeholder="Enter order number (auto-fetch)",
+    placeholder="Enter order number",
     key="order_input"
 )
 
-# Update session state
 if order_number != st.session_state.order_number:
     st.session_state.order_number = order_number
     st.rerun()
 
-# Auto-fetch category
 category = None
 if order_number:
     category = get_category_by_order(order_number)
