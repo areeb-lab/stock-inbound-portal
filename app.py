@@ -11,12 +11,36 @@ import base64
 st.set_page_config(page_title="Stock Inbound Portal", page_icon="📦", layout="wide")
 
 @st.cache_resource
-def get_google_sheet():
+def get_google_client():
     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     credentials = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
     client = gspread.authorize(credentials)
+    return client
+
+def get_google_sheet():
+    client = get_google_client()
     sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).sheet1
     return sheet
+
+# NEW FUNCTION - Category fetch from dump sheet
+def get_category_by_order(order_num):
+    try:
+        client = get_google_client()
+        dump_sheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"]).worksheet("dump")
+        
+        # Column E (Order Number) = 5, Column CL (Category) = 90
+        order_numbers = dump_sheet.col_values(5)   # Column E
+        categories = dump_sheet.col_values(90)      # Column CL
+        
+        # Order number match karo
+        for i, order in enumerate(order_numbers):
+            if str(order).strip() == str(order_num).strip():
+                if i < len(categories):
+                    return categories[i]
+                return None
+        return None
+    except Exception as e:
+        return None
 
 def upload_to_imgbb(image):
     try:
@@ -42,11 +66,11 @@ def load_data():
     except:
         return []
 
-def save_to_sheet(order_number, image_url):
+def save_to_sheet(order_number, category, image_url):
     try:
         sheet = get_google_sheet()
         date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([date_now, order_number, image_url])
+        sheet.append_row([date_now, order_number, category, image_url])  # Category added
         return True
     except:
         return False
@@ -63,6 +87,7 @@ st.markdown("""
 <style>
     .main-header {text-align: center; padding: 20px; background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%); color: white; border-radius: 10px; margin-bottom: 20px;}
     .stButton>button {width: 100%; background-color: #4CAF50; color: white;}
+    .category-box {padding: 10px; background-color: #1e3a5f; border-radius: 8px; margin: 10px 0;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -73,6 +98,21 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.markdown("### 📝 New Stock Entry")
     order_number = st.text_input("Order Number *", placeholder="Enter order number")
+    
+    # AUTO-FETCH CATEGORY
+    category = None
+    if order_number:
+        with st.spinner("🔍 Fetching category..."):
+            category = get_category_by_order(order_number)
+            if category:
+                st.markdown(f"""
+                <div class="category-box">
+                    <strong>📦 Category:</strong> {category}
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ Category not found for this order number")
+    
     st.markdown("#### 📷 Stock Image")
     option = st.radio("Select option:", ["📷 Take Photo", "📤 Upload Photo"], horizontal=True)
     
@@ -89,6 +129,8 @@ with col1:
     if st.button("💾 Save Record", use_container_width=True):
         if not order_number:
             st.error("⚠️ Order Number is required!")
+        elif not category:
+            st.error("⚠️ Category not found! Please check order number.")
         elif not image_data:
             st.error("⚠️ Please take or upload an image!")
         else:
@@ -97,7 +139,7 @@ with col1:
                 image.thumbnail((800, 800))
                 image_url = upload_to_imgbb(image)
                 
-                if image_url and save_to_sheet(order_number, image_url):
+                if image_url and save_to_sheet(order_number, category, image_url):
                     st.success("✅ Saved!")
                     st.balloons()
                     st.rerun()
@@ -122,6 +164,7 @@ with col2:
             actual_idx = len(records) - 1 - idx
             with st.expander(f"📦 Order #{record.get('Order Number', 'N/A')} - {str(record.get('Date', ''))[:10]}", expanded=(idx == 0)):
                 st.markdown(f"**Order #:** {record.get('Order Number', 'N/A')}")
+                st.markdown(f"**Category:** {record.get('Category', 'N/A')}")  # Category display
                 st.markdown(f"**Date:** {record.get('Date', 'N/A')}")
                 st.markdown(f"**🔗 Image:** [Click to View]({record.get('Image URL', '#')})")
                 
@@ -136,7 +179,12 @@ with st.sidebar:
     st.metric("Total Records", len(records))
     
     if records:
-        df = pd.DataFrame([{"Date": r.get('Date', ''), "Order Number": r.get('Order Number', ''), "Image URL": r.get('Image URL', '')} for r in records])
+        df = pd.DataFrame([{
+            "Date": r.get('Date', ''), 
+            "Order Number": r.get('Order Number', ''), 
+            "Category": r.get('Category', ''),  # Category added
+            "Image URL": r.get('Image URL', '')
+        } for r in records])
         st.download_button("📥 Download CSV", df.to_csv(index=False), f"stock_records_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv", use_container_width=True)
 
 st.markdown("<p style='text-align: center; color: #888;'>📦 Stock Inbound Portal</p>", unsafe_allow_html=True)
