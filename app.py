@@ -8,7 +8,11 @@ from google.oauth2.service_account import Credentials
 import requests
 import base64
 
-st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="wide")
+st.set_page_config(page_title="Fleek-Inbound", page_icon="🚚", layout="centered")
+
+# Session state for showing records
+if 'show_records' not in st.session_state:
+    st.session_state.show_records = False
 
 # CACHE CLEAR BUTTON
 if st.sidebar.button("🔄 Clear Cache"):
@@ -90,67 +94,60 @@ def delete_from_sheet(row_index):
 
 st.markdown("""
 <style>
-    .main-header {text-align: center; padding: 20px; background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%); color: white; border-radius: 10px; margin-bottom: 20px;}
-    .stButton>button {width: 100%; background-color: #4CAF50; color: white;}
-    .category-box {padding: 15px; background-color: #1e3a5f; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4CAF50;}
+    .main-header {
+        text-align: center; 
+        padding: 20px; 
+        background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%); 
+        color: white; 
+        border-radius: 10px; 
+        margin-bottom: 20px;
+    }
+    .stButton>button {
+        width: 100%; 
+        background-color: #4CAF50; 
+        color: white;
+    }
+    .category-box {
+        padding: 15px; 
+        background-color: #1e3a5f; 
+        border-radius: 8px; 
+        margin: 10px 0; 
+        border-left: 4px solid #4CAF50;
+    }
+    .records-icon {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 999;
+    }
+    .center-form {
+        max-width: 500px;
+        margin: 0 auto;
+    }
 </style>
 """, unsafe_allow_html=True)
 
+# HEADER
 st.markdown('<div class="main-header"><h1>🚚 Fleek-Inbound 📦</h1><p>Stock ki photo aur order number save karein</p></div>', unsafe_allow_html=True)
 
-col1, col2 = st.columns([1, 1])
+# FLOATING RECORDS BUTTON (Top Right)
+col_spacer, col_btn = st.columns([4, 1])
+with col_btn:
+    if st.button("📋 Records", use_container_width=True):
+        st.session_state.show_records = not st.session_state.show_records
+        st.rerun()
 
-with col1:
-    st.markdown("### 📝 New Stock Entry")
-    order_number = st.text_input("Order Number *", placeholder="Enter order number")
-    
-    # AUTO-FETCH CATEGORY
-    category = None
-    if order_number:
-        with st.spinner("🔍 Fetching category..."):
-            category = get_category_by_order(order_number)
-            if category:
-                st.markdown(f"""
-                <div class="category-box">
-                    📦 <strong>Category:</strong> {category}
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.warning("⚠️ Category not found for this order number")
-    
-    st.markdown("#### 📷 Stock Image")
-    option = st.radio("Select option:", ["📷 Take Photo", "📤 Upload Photo"], horizontal=True)
-    
-    image_data = None
-    if option == "📷 Take Photo":
-        camera_photo = st.camera_input("Take a photo")
-        if camera_photo:
-            image_data = camera_photo
-    else:
-        uploaded_file = st.file_uploader("Upload image", type=['jpg', 'jpeg', 'png'])
-        if uploaded_file:
-            image_data = uploaded_file
-    
-    if st.button("💾 Save Record", use_container_width=True):
-        if not order_number:
-            st.error("⚠️ Order Number is required!")
-        elif not category:
-            st.error("⚠️ Category not found! Please check order number.")
-        elif not image_data:
-            st.error("⚠️ Please take or upload an image!")
-        else:
-            with st.spinner("Uploading..."):
-                image = Image.open(image_data)
-                image.thumbnail((800, 800))
-                image_url = upload_to_imgbb(image)
-                
-                if image_url and save_to_sheet(order_number, category, image_url):
-                    st.success("✅ Saved!")
-                    st.balloons()
-                    st.rerun()
-
-with col2:
+# SHOW RECORDS POPUP
+if st.session_state.show_records:
+    st.markdown("---")
     st.markdown("### 📋 Saved Records")
+    
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("❌ Close", use_container_width=True):
+            st.session_state.show_records = False
+            st.rerun()
+    
     if st.button("🔄 Refresh", use_container_width=True):
         st.rerun()
     
@@ -177,7 +174,60 @@ with col2:
                     if delete_from_sheet(actual_idx):
                         st.success("Deleted!")
                         st.rerun()
+    
+    st.markdown("---")
 
+# MAIN FORM - CENTERED
+st.markdown("### 📝 New Stock Entry")
+
+order_number = st.text_input("Order Number *", placeholder="Enter order number")
+
+# AUTO-FETCH CATEGORY
+category = None
+if order_number:
+    with st.spinner("🔍 Fetching category..."):
+        category = get_category_by_order(order_number)
+        if category:
+            st.markdown(f"""
+            <div class="category-box">
+                📦 <strong>Category:</strong> {category}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ Category not found for this order number")
+
+st.markdown("#### 📷 Stock Image")
+option = st.radio("Select option:", ["📷 Take Photo", "📤 Upload Photo"], horizontal=True)
+
+image_data = None
+if option == "📷 Take Photo":
+    camera_photo = st.camera_input("Take a photo")
+    if camera_photo:
+        image_data = camera_photo
+else:
+    uploaded_file = st.file_uploader("Upload image", type=['jpg', 'jpeg', 'png'])
+    if uploaded_file:
+        image_data = uploaded_file
+
+if st.button("💾 Save Record", use_container_width=True):
+    if not order_number:
+        st.error("⚠️ Order Number is required!")
+    elif not category:
+        st.error("⚠️ Category not found! Please check order number.")
+    elif not image_data:
+        st.error("⚠️ Please take or upload an image!")
+    else:
+        with st.spinner("Uploading..."):
+            image = Image.open(image_data)
+            image.thumbnail((800, 800))
+            image_url = upload_to_imgbb(image)
+            
+            if image_url and save_to_sheet(order_number, category, image_url):
+                st.success("✅ Saved!")
+                st.balloons()
+                st.rerun()
+
+# SIDEBAR
 with st.sidebar:
     st.markdown("### 📊 Dashboard")
     records = load_data()
@@ -192,4 +242,5 @@ with st.sidebar:
         } for r in records])
         st.download_button("📥 Download CSV", df.to_csv(index=False), f"fleek_inbound_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv", use_container_width=True)
 
-st.markdown("<p style='text-align: center; color: #888;'>🚚 Fleek-Inbound 📦</p>", unsafe_allow_html=True)
+# FOOTER
+st.markdown("<p style='text-align: center; color: #888; margin-top: 50px;'>🚚 Fleek-Inbound 📦</p>", unsafe_allow_html=True)
