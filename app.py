@@ -222,37 +222,31 @@ with col2:
         """, unsafe_allow_html=True)
     
     st.markdown("### 📷 Stock Image")
-    
-    uploaded_file = st.file_uploader(
-        "📸 Take Photo or Upload (Back Camera)",
-        type=["jpg", "jpeg", "png"],
-        key=f"upload_{st.session_state.form_key}",
-        accept_multiple_files=False
+    image_option = st.radio(
+        "Select option:",
+        ["📷 Take Photo", "📁 Upload Photo"],
+        horizontal=True,
+        key=f"option_{st.session_state.form_key}"
     )
     
-    # Inject HTML to force back camera
-    st.markdown("""
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const fileInputs = document.querySelectorAll('input[type="file"]');
-        fileInputs.forEach(input => {
-            input.setAttribute('capture', 'environment');
-            input.setAttribute('accept', 'image/*');
-        });
-    });
-    setTimeout(function() {
-        const fileInputs = document.querySelectorAll('input[type="file"]');
-        fileInputs.forEach(input => {
-            input.setAttribute('capture', 'environment');
-            input.setAttribute('accept', 'image/*');
-        });
-    }, 1000);
-    </script>
-    """, unsafe_allow_html=True)
-    
     image = None
-    if uploaded_file:
-        image = Image.open(uploaded_file)
+    if image_option == "📷 Take Photo":
+        camera_image = st.camera_input(
+            "Take a photo",
+            key=f"camera_{st.session_state.form_key}"
+        )
+        if camera_image:
+            image = Image.open(camera_image)
+    else:
+        uploaded_file = st.file_uploader(
+            "Upload image",
+            type=["jpg", "jpeg", "png"],
+            key=f"upload_{st.session_state.form_key}"
+        )
+        if uploaded_file:
+            image = Image.open(uploaded_file)
+    
+    if image:
         st.image(image, caption="Preview", use_column_width=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
