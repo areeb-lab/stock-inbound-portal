@@ -48,6 +48,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- Success Sound Function ---
+def play_success_sound():
+    sound_html = """
+    <audio autoplay>
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+    """
+    st.markdown(sound_html, unsafe_allow_html=True)
+
 # --- Google Sheets Connection ---
 @st.cache_resource
 def get_gspread_client():
@@ -136,6 +145,12 @@ def save_record(order_number, category, image_url):
     sheet.append_row([date_now, order_number, category, image_url])
     st.cache_data.clear()
 
+# Initialize session state
+if 'form_key' not in st.session_state:
+    st.session_state.form_key = 0
+if 'success' not in st.session_state:
+    st.session_state.success = False
+
 order_category_map, order_list = get_dump_data()
 pickup_ready, inbound_done = get_scorecard_counts()
 total = pickup_ready + inbound_done
@@ -198,6 +213,11 @@ with col_btn:
     if st.button("📋 Records"):
         st.session_state.show_records = not st.session_state.get('show_records', False)
 
+# Play sound if success
+if st.session_state.success:
+    play_success_sound()
+    st.session_state.success = False
+
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
@@ -206,7 +226,8 @@ with col2:
     selected_order = st.selectbox(
         "Order Number *",
         options=[""] + order_list,
-        format_func=lambda x: "Select order number..." if x == "" else x
+        format_func=lambda x: "Select order number..." if x == "" else x,
+        key=f"order_{st.session_state.form_key}"
     )
     
     category = ""
@@ -219,15 +240,24 @@ with col2:
         """, unsafe_allow_html=True)
     
     st.markdown("### 📷 Stock Image")
-    image_option = st.radio("Select option:", ["📷 Take Photo", "📁 Upload Photo"], horizontal=True)
+    image_option = st.radio(
+        "Select option:", 
+        ["📷 Take Photo", "📁 Upload Photo"], 
+        horizontal=True,
+        key=f"option_{st.session_state.form_key}"
+    )
     
     image = None
     if image_option == "📷 Take Photo":
-        camera_image = st.camera_input("Take a photo")
+        camera_image = st.camera_input("Take a photo", key=f"camera_{st.session_state.form_key}")
         if camera_image:
             image = Image.open(camera_image)
     else:
-        uploaded_file = st.file_uploader("Upload image", type=["jpg", "jpeg", "png"])
+        uploaded_file = st.file_uploader(
+            "Upload image", 
+            type=["jpg", "jpeg", "png"],
+            key=f"upload_{st.session_state.form_key}"
+        )
         if uploaded_file:
             image = Image.open(uploaded_file)
     
@@ -245,7 +275,15 @@ with col2:
                 image_url = upload_to_imgbb(image)
                 save_record(selected_order, category, image_url)
                 st.success("✅ Record saved successfully!")
-                st.balloons()
+                
+                # Set success flag for sound
+                st.session_state.success = True
+                
+                # Increment form key to reset all inputs
+                st.session_state.form_key += 1
+                
+                # Rerun to clear form
+                st.rerun()
 
 if st.session_state.get('show_records', False):
     st.markdown("---")
