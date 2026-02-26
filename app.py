@@ -75,41 +75,34 @@ def get_scorecard_counts():
     client = get_gspread_client()
     spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
     
-    # Score Card sheet se data
     score_card_sheet = spreadsheet.worksheet("Score Card")
     all_data = score_card_sheet.get_all_values()
     
-    # Header skip karke data lein
     if len(all_data) > 1:
         data_rows = all_data[1:]
     else:
         data_rows = []
     
-    # Today's date - multiple formats try karein
     today = datetime.now()
     today_formats = [
-        today.strftime("%d-%b-%Y"),      # 26-Feb-2026
-        today.strftime("%d-%B-%Y"),      # 26-February-2026
-        today.strftime("%Y-%m-%d"),      # 2026-02-26
-        today.strftime("%d/%m/%Y"),      # 26/02/2026
-        today.strftime("%-d-%b-%Y"),     # 6-Feb-2026 (no leading zero)
+        today.strftime("%d-%b-%Y"),
+        today.strftime("%d-%B-%Y"),
+        today.strftime("%Y-%m-%d"),
+        today.strftime("%d/%m/%Y"),
     ]
     
-    # Pickup ready count - aaj ki date ke orders
     pickup_ready = 0
     for row in data_rows:
         if len(row) >= 3:
             date_val = str(row[0]).strip()
             order_val = str(row[2]).strip() if len(row) > 2 else ""
             
-            # Check if date matches any format
             date_matches = any(fmt in date_val or date_val in fmt or date_val == fmt for fmt in today_formats)
             
             if date_matches and order_val:
                 pickup_ready += 1
     
-    # Inbound done count - main sheet se aaj ki date
-    main_sheet = spreadsheet.worksheet("sheet1")
+    main_sheet = spreadsheet.worksheet("inbound")
     main_data = main_sheet.get_all_values()
     
     inbound_done = 0
@@ -138,7 +131,7 @@ def upload_to_imgbb(image):
 def save_record(order_number, category, image_url):
     client = get_gspread_client()
     spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
-    sheet = spreadsheet.worksheet("sheet1")
+    sheet = spreadsheet.worksheet("inbound")
     date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sheet.append_row([date_now, order_number, category, image_url])
     st.cache_data.clear()
@@ -258,7 +251,7 @@ if st.session_state.get('show_records', False):
     
     client = get_gspread_client()
     spreadsheet = client.open_by_key(st.secrets["google_sheets"]["sheet_id"])
-    sheet = spreadsheet.worksheet("sheet1")
+    sheet = spreadsheet.worksheet("inbound")
     records = sheet.get_all_records()
     
     if records:
