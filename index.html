@@ -1,829 +1,359 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>🚚 Fleek-Inbound 📦</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Segoe UI', sans-serif;
-    background: #0e1117;
-    color: #e0e0e0;
-    min-height: 100vh;
-  }
-
-  /* ── HEADER ── */
-  .header-wrap {
-    display: grid;
-    grid-template-columns: 2fr 1.5fr;
-    gap: 16px;
-    padding: 20px 24px 0;
-  }
-
-  .main-header {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    padding: 30px 40px;
-    border-radius: 15px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-  }
-  .header-title {
-    font-size: 2.4rem;
-    font-weight: bold;
-    color: white;
-  }
-  .header-subtitle {
-    color: #888;
-    font-size: 1rem;
-    margin-top: 6px;
-  }
-
-  /* ── SCORECARD ── */
-  .scorecard {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-radius: 15px;
-    padding: 20px 25px;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .donut-wrap {
-    position: relative;
-    width: 160px;
-    height: 160px;
-    flex-shrink: 0;
-  }
-  .donut-ring {
-    width: 160px;
-    height: 160px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.5s ease;
-  }
-  .donut-hole {
-    width: 110px;
-    height: 110px;
-    border-radius: 50%;
-    background: #0e1117;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  .donut-total {
-    color: white;
-    font-size: 2rem;
-    font-weight: bold;
-    line-height: 1;
-  }
-  .donut-label {
-    color: #888;
-    font-size: 0.75rem;
-    margin-top: 3px;
-  }
-
-  .legend-item { margin-bottom: 14px; }
-  .legend-item:last-child { margin-bottom: 0; }
-  .legend-title { font-weight: bold; font-size: 0.95rem; }
-  .legend-count { font-size: 1.3rem; font-weight: bold; }
-  .legend-pct { font-size: 0.82rem; opacity: 0.8; }
-  .orange { color: #E67E22; }
-  .green  { color: #27AE60; }
-
-  /* ── FORM SECTION ── */
-  .form-outer {
-    display: flex;
-    justify-content: center;
-    padding: 28px 24px;
-  }
-  .form-inner {
-    width: 100%;
-    max-width: 620px;
-    background: #1a1a2e;
-    border-radius: 15px;
-    padding: 30px;
-  }
-
-  .section-title {
-    font-size: 1.15rem;
-    font-weight: bold;
-    color: white;
-    margin-bottom: 12px;
-  }
-
-  /* Selectbox */
-  .select-wrap { position: relative; margin-bottom: 18px; }
-  .select-wrap label {
-    display: block;
-    font-size: 0.85rem;
-    color: #aaa;
-    margin-bottom: 6px;
-  }
-  select {
-    width: 100%;
-    padding: 12px 16px;
-    background: #0e1117;
-    color: #e0e0e0;
-    border: 1px solid #2a3a5c;
-    border-radius: 8px;
-    font-size: 1rem;
-    appearance: none;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  select:focus { border-color: #4CAF50; }
-  .select-arrow {
-    position: absolute;
-    right: 14px;
-    top: 38px;
-    color: #888;
-    pointer-events: none;
-  }
-
-  /* Category & Vendor boxes */
-  .cv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-  .info-box {
-    background: #0e1117;
-    padding: 14px;
-    border-radius: 10px;
-  }
-  .info-box.category { border-left: 4px solid #4CAF50; }
-  .info-box.vendor   { border-left: 4px solid #E67E22; }
-  .info-box small { font-size: 0.72rem; font-weight: bold; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
-  .info-box.category small { color: #4CAF50; }
-  .info-box.vendor   small { color: #E67E22; }
-  .info-box span { font-size: 0.95rem; color: #e0e0e0; }
-
-  /* Radio */
-  .radio-group {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-  .radio-btn {
-    flex: 1;
-    padding: 10px;
-    background: #0e1117;
-    border: 2px solid #2a3a5c;
-    border-radius: 8px;
-    text-align: center;
-    cursor: pointer;
-    color: #aaa;
-    font-size: 0.95rem;
-    transition: all 0.2s;
-    user-select: none;
-  }
-  .radio-btn.active {
-    border-color: #4CAF50;
-    color: #4CAF50;
-    background: #0a1f0a;
-  }
-
-  /* Image input areas */
-  .img-area { margin-bottom: 16px; }
-  #camera-section, #upload-section { display: none; }
-  #camera-section.show, #upload-section.show { display: block; }
-
-  video {
-    width: 100%;
-    border-radius: 10px;
-    background: #000;
-  }
-  canvas { display: none; }
-
-  .cam-btn {
-    width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    background: #1e3a5f;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .cam-btn:hover { background: #2a4a7f; }
-  .cam-btn.retake { background: #5a2a1f; }
-  .cam-btn.retake:hover { background: #7a3a2f; }
-
-  .file-drop {
-    border: 2px dashed #2a3a5c;
-    border-radius: 10px;
-    padding: 30px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s;
-    color: #888;
-  }
-  .file-drop:hover { border-color: #4CAF50; color: #4CAF50; }
-  .file-drop input { display: none; }
-
-  /* Preview */
-  .preview-wrap {
-    margin-bottom: 16px;
-    display: none;
-  }
-  .preview-wrap.show { display: block; }
-  .preview-wrap img {
-    width: 100%;
-    border-radius: 10px;
-    max-height: 300px;
-    object-fit: contain;
-    background: #0e1117;
-  }
-
-  /* Buttons */
-  .btn-save {
-    width: 100%;
-    padding: 16px;
-    background: linear-gradient(135deg, #4CAF50, #388E3C);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-size: 1.2rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: opacity 0.2s;
-    margin-bottom: 12px;
-  }
-  .btn-save:hover { opacity: 0.9; }
-  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .btn-history {
-    width: 100%;
-    padding: 12px;
-    background: #1e3a5f;
-    color: white;
-    border: 1px solid #3a5a8f;
-    border-radius: 10px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .btn-history:hover { background: #2a4a7f; }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 14px 22px;
-    border-radius: 10px;
-    font-size: 1rem;
-    font-weight: bold;
-    z-index: 9999;
-    opacity: 0;
-    transform: translateX(60px);
-    transition: all 0.3s ease;
-    max-width: 320px;
-  }
-  .toast.show { opacity: 1; transform: translateX(0); }
-  .toast.success { background: #1a4a1a; border: 1px solid #4CAF50; color: #4CAF50; }
-  .toast.error   { background: #4a1a1a; border: 1px solid #e74c3c; color: #e74c3c; }
-
-  /* Spinner */
-  .spinner {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    border: 3px solid rgba(255,255,255,0.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle;
-    margin-right: 8px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* History Section */
-  .history-section {
-    padding: 0 24px 30px;
-    display: none;
-  }
-  .history-section.show { display: block; }
-  .history-title {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: white;
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #2a3a5c;
-  }
-
-  .history-table-wrap { overflow-x: auto; border-radius: 10px; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #1a1a2e;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  th {
-    background: #16213e;
-    color: #aaa;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 12px 16px;
-    text-align: left;
-  }
-  td {
-    padding: 12px 16px;
-    border-bottom: 1px solid #1e2e4a;
-    font-size: 0.9rem;
-    color: #e0e0e0;
-  }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #1e2e4a; }
-
-  td.img-cell img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  .no-records {
-    text-align: center;
-    padding: 40px;
-    color: #888;
-    background: #1a1a2e;
-    border-radius: 10px;
-  }
-
-  /* Loading overlay */
-  .loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9998;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .loading-overlay.show { display: flex; }
-  .loading-text { color: white; font-size: 1rem; }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .header-wrap { grid-template-columns: 1fr; }
-    .cv-grid { grid-template-columns: 1fr; }
-    .scorecard { flex-direction: column; align-items: flex-start; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleek-Inbound</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0e1117;
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 { font-size: 2.5rem; }
+        .header p { color: #888; margin-top: 10px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; }
+        select, button {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            font-size: 1rem;
+        }
+        select { background: #1e3a5f; color: white; }
+        .info-box {
+            background: #1e3a5f;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .info-box.category { border-left: 4px solid #4CAF50; }
+        .info-box.vendor { border-left: 4px solid #E67E22; }
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        .btn-secondary {
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        video, img { width: 100%; border-radius: 10px; margin: 10px 0; }
+        .scorecard {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .donut {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .donut-inner {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #0e1117;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .donut-inner .total { font-size: 2rem; font-weight: bold; }
+        .donut-inner .label { color: #888; font-size: 0.8rem; }
+        .stats div { margin: 5px 0; }
+        .orange { color: #E67E22; }
+        .green { color: #27AE60; }
+        .hidden { display: none; }
+        .success { background: #27AE60; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0; }
+        .error { background: #e74c3c; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0; }
+        #history-section { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #1e3a5f; }
+        .row { display: flex; gap: 10px; }
+        .row > div { flex: 1; }
+    </style>
 </head>
 <body>
+    <div class="header">
+        <h1>🚚 Fleek-Inbound 📦</h1>
+        <p>Jahan Vintage Wahan Fleek</p>
+    </div>
 
-<!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner" style="width:40px;height:40px;border-width:4px;"></div>
-  <div class="loading-text" id="loadingText">Saving...</div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
-<!-- Beep Audio -->
-<audio id="beepAudio" preload="auto">
-  <source src="https://www.soundjay.com/buttons/beep-01a.mp3" type="audio/mpeg">
-</audio>
-
-<!-- ── HEADER ── -->
-<div class="header-wrap">
-  <div class="main-header">
-    <div class="header-title">🚚 Fleek-Inbound 📦</div>
-    <div class="header-subtitle">Jahan Vintage Wahan Fleek</div>
-  </div>
-  <div class="scorecard">
-    <div class="donut-wrap">
-      <div class="donut-ring" id="donutRing">
-        <div class="donut-hole">
-          <span class="donut-total" id="donutTotal">–</span>
-          <span class="donut-label">Total</span>
+    <div class="scorecard">
+        <div class="donut" id="donut">
+            <div class="donut-inner">
+                <span class="total" id="total">0</span>
+                <span class="label">Total</span>
+            </div>
         </div>
-      </div>
-    </div>
-    <div>
-      <div class="legend-item">
-        <div class="legend-title orange">🟠 PICKUP_READY</div>
-        <div>
-          <span class="legend-count orange" id="pickupCount">–</span>
-          <span class="legend-pct orange" id="pickupPct"></span>
+        <div class="stats">
+            <div class="orange"><strong>🟠 PICKUP_READY</strong><br><span id="pickup">0</span></div>
+            <div class="green"><strong>🟢 INBOUND_DONE</strong><br><span id="inbound">0</span></div>
         </div>
-      </div>
-      <div class="legend-item">
-        <div class="legend-title green">🟢 INBOUND_DONE</div>
-        <div>
-          <span class="legend-count green" id="inboundCount">–</span>
-          <span class="legend-pct green" id="inboundPct"></span>
+    </div>
+
+    <div class="container">
+        <h2>📝 New Stock Entry</h2>
+        
+        <div class="form-group">
+            <label>Order Number *</label>
+            <select id="orderSelect">
+                <option value="">Select order number...</option>
+            </select>
         </div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- ── FORM ── -->
-<div class="form-outer">
-  <div class="form-inner">
+        <div class="row" id="infoRow" style="display:none;">
+            <div>
+                <div class="info-box category">
+                    <strong>📦 Category:</strong><br>
+                    <span id="categoryDisplay"></span>
+                </div>
+            </div>
+            <div>
+                <div class="info-box vendor">
+                    <strong>🏪 Vendor:</strong><br>
+                    <span id="vendorDisplay"></span>
+                </div>
+            </div>
+        </div>
 
-    <div class="section-title">📝 New Stock Entry</div>
+        <div class="form-group">
+            <label>📷 Stock Image</label>
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" class="hidden"></canvas>
+            <img id="preview" class="hidden">
+            <button type="button" class="btn-secondary" id="captureBtn">📸 Capture Photo</button>
+            <button type="button" class="btn-secondary hidden" id="retakeBtn">🔄 Retake</button>
+        </div>
 
-    <!-- Order Number -->
-    <div class="select-wrap">
-      <label>Order Number *</label>
-      <select id="orderSelect">
-        <option value="">Select order number...</option>
-      </select>
-      <span class="select-arrow">▾</span>
-    </div>
+        <div id="message"></div>
 
-    <!-- Category & Vendor -->
-    <div class="cv-grid" id="cvGrid" style="display:none;">
-      <div class="info-box category">
-        <small>📦 CATEGORY</small>
-        <span id="categoryVal">–</span>
-      </div>
-      <div class="info-box vendor">
-        <small>🏪 VENDOR</small>
-        <span id="vendorVal">–</span>
-      </div>
-    </div>
+        <button class="btn-primary" id="saveBtn">🚚 Chalo Inbound Mai</button>
+        <button class="btn-secondary" id="historyBtn">📜 History</button>
 
-    <!-- Image Section -->
-    <div class="section-title" style="margin-top:8px;">📷 Stock Image</div>
-
-    <div class="radio-group">
-      <div class="radio-btn active" id="radioCamera" onclick="switchMode('camera')">📷 Take Photo</div>
-      <div class="radio-btn" id="radioUpload" onclick="switchMode('upload')">📁 Upload Photo</div>
-    </div>
-
-    <!-- Camera -->
-    <div class="img-area" id="camera-section" class="show">
-      <video id="video" autoplay playsinline></video>
-      <canvas id="canvas"></canvas>
-      <button class="cam-btn" id="captureBtn" onclick="capturePhoto()">📸 Capture Photo</button>
+        <div id="history-section" class="hidden">
+            <h3>📜 Today's History</h3>
+            <table id="historyTable">
+                <thead>
+                    <tr><th>Time</th><th>Order</th><th>Category</th><th>Vendor</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- Upload -->
-    <div class="img-area" id="upload-section">
-      <div class="file-drop" onclick="document.getElementById('fileInput').click()">
-        <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)"/>
-        <div style="font-size:2rem; margin-bottom:8px;">📁</div>
-        <div>Click to upload or drag & drop</div>
-        <div style="font-size:0.8rem; margin-top:4px;">JPG, JPEG, PNG</div>
-      </div>
-    </div>
+    <audio id="beep" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
 
-    <!-- Preview -->
-    <div class="preview-wrap" id="previewWrap">
-      <img id="previewImg" src="" alt="Preview"/>
-      <button class="cam-btn retake" id="retakeBtn" onclick="retakePhoto()" style="margin-top:8px;">🔄 Retake / Change</button>
-    </div>
+    <script>
+        let orders = [];
+        let selectedOrder = null;
+        let capturedImage = null;
 
-    <br/>
-
-    <!-- Save Button -->
-    <button class="btn-save" id="saveBtn" onclick="saveRecord()">🚚 Chalo Inbound Mai</button>
-
-    <!-- History Button -->
-    <button class="btn-history" id="historyBtn" onclick="toggleHistory()">📜 History</button>
-
-  </div>
-</div>
-
-<!-- ── HISTORY ── -->
-<div class="history-section" id="historySection">
-  <div class="history-title">📜 Today's Inbound History</div>
-  <div id="historyContent">
-    <div class="no-records">Loading...</div>
-  </div>
-</div>
-
-<script>
-// ─── State ────────────────────────────────────────────────────────────────────
-let ordersData   = {};
-let capturedBlob = null;
-let currentMode  = 'camera';
-let stream       = null;
-let historyVisible = false;
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  loadOrders();
-  loadScorecard();
-  startCamera();
-});
-
-// ─── API Calls ────────────────────────────────────────────────────────────────
-async function loadOrders() {
-  try {
-    const res  = await fetch('/api/orders');
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
-
-    const select = document.getElementById('orderSelect');
-    data.orders.forEach(o => {
-      ordersData[o.id] = { category: o.category, vendor: o.vendor };
-      const opt = document.createElement('option');
-      opt.value = o.id;
-      opt.textContent = o.id;
-      select.appendChild(opt);
-    });
-  } catch(e) {
-    showToast('Error loading orders: ' + e.message, 'error');
-  }
-}
-
-async function loadScorecard() {
-  try {
-    const res  = await fetch('/api/scorecard');
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
-    updateDonut(data.pickup_ready, data.inbound_done);
-  } catch(e) {
-    console.error('Scorecard error:', e);
-  }
-}
-
-// ─── Donut Chart ──────────────────────────────────────────────────────────────
-function updateDonut(pickup, inbound) {
-  const total = pickup + inbound;
-  const pickupPct  = total > 0 ? (pickup  / total * 100) : 50;
-  const inboundPct = total > 0 ? (inbound / total * 100) : 50;
-  const deg = pickupPct * 3.6;
-
-  document.getElementById('donutRing').style.background =
-    `conic-gradient(#E67E22 0deg ${deg.toFixed(2)}deg, #27AE60 ${deg.toFixed(2)}deg 360deg)`;
-
-  document.getElementById('donutTotal').textContent    = total;
-  document.getElementById('pickupCount').textContent   = pickup;
-  document.getElementById('inboundCount').textContent  = inbound;
-  document.getElementById('pickupPct').textContent     = ` (${pickupPct.toFixed(1)}%)`;
-  document.getElementById('inboundPct').textContent    = ` (${inboundPct.toFixed(1)}%)`;
-}
-
-// ─── Order Select ─────────────────────────────────────────────────────────────
-document.getElementById('orderSelect').addEventListener('change', function() {
-  const val  = this.value;
-  const grid = document.getElementById('cvGrid');
-  if (val && ordersData[val]) {
-    document.getElementById('categoryVal').textContent = ordersData[val].category || '–';
-    document.getElementById('vendorVal').textContent   = ordersData[val].vendor   || '–';
-    grid.style.display = 'grid';
-  } else {
-    grid.style.display = 'none';
-  }
-});
-
-// ─── Camera ───────────────────────────────────────────────────────────────────
-async function startCamera() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
-    document.getElementById('video').srcObject = stream;
-    document.getElementById('camera-section').classList.add('show');
-  } catch(e) {
-    // Camera not available, switch to upload
-    switchMode('upload');
-    document.getElementById('radioCamera').style.display = 'none';
-  }
-}
-
-function stopCamera() {
-  if (stream) {
-    stream.getTracks().forEach(t => t.stop());
-    stream = null;
-  }
-}
-
-function capturePhoto() {
-  const video  = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  canvas.width  = video.videoWidth  || 800;
-  canvas.height = video.videoHeight || 600;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-
-  canvas.toBlob(blob => {
-    capturedBlob = blob;
-    showPreview(URL.createObjectURL(blob));
-    stopCamera();
-    document.getElementById('camera-section').classList.remove('show');
-  }, 'image/jpeg', 0.9);
-}
-
-// ─── Upload ───────────────────────────────────────────────────────────────────
-function handleFileUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  capturedBlob = file;
-  showPreview(URL.createObjectURL(file));
-}
-
-// ─── Mode Switch ──────────────────────────────────────────────────────────────
-function switchMode(mode) {
-  currentMode = mode;
-  capturedBlob = null;
-  hidePreview();
-
-  document.getElementById('radioCamera').classList.toggle('active', mode === 'camera');
-  document.getElementById('radioUpload').classList.toggle('active', mode === 'upload');
-
-  const camSec = document.getElementById('camera-section');
-  const upSec  = document.getElementById('upload-section');
-
-  if (mode === 'camera') {
-    upSec.classList.remove('show');
-    camSec.classList.add('show');
-    startCamera();
-  } else {
-    camSec.classList.remove('show');
-    upSec.classList.add('show');
-    stopCamera();
-  }
-}
-
-// ─── Preview ──────────────────────────────────────────────────────────────────
-function showPreview(url) {
-  document.getElementById('previewImg').src = url;
-  document.getElementById('previewWrap').classList.add('show');
-  document.getElementById('upload-section').classList.remove('show');
-}
-
-function hidePreview() {
-  document.getElementById('previewWrap').classList.remove('show');
-  document.getElementById('previewImg').src = '';
-  capturedBlob = null;
-}
-
-function retakePhoto() {
-  hidePreview();
-  if (currentMode === 'camera') {
-    document.getElementById('camera-section').classList.add('show');
-    startCamera();
-  } else {
-    document.getElementById('upload-section').classList.add('show');
-    document.getElementById('fileInput').value = '';
-  }
-}
-
-// ─── Save ─────────────────────────────────────────────────────────────────────
-async function saveRecord() {
-  const order = document.getElementById('orderSelect').value;
-  if (!order) { showToast('❌ Please select an order number!', 'error'); return; }
-  if (!capturedBlob) { showToast('❌ Please capture or upload an image!', 'error'); return; }
-
-  const category = ordersData[order]?.category || '';
-  const vendor   = ordersData[order]?.vendor   || '';
-
-  // Compress image
-  showLoading('Uploading image...');
-  const b64 = await compressImage(capturedBlob);
-
-  try {
-    const res = await fetch('/api/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_number: order, category, vendor, image_b64: b64 })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
-
-    hideLoading();
-    document.getElementById('beepAudio').play().catch(() => {});
-    showToast('✅ Record saved successfully!', 'success');
-    resetForm();
-    loadScorecard();
-
-    if (historyVisible) loadHistory();
-
-  } catch(e) {
-    hideLoading();
-    showToast('❌ Error: ' + e.message, 'error');
-  }
-}
-
-// ─── Compress Image ───────────────────────────────────────────────────────────
-function compressImage(blob) {
-  return new Promise(resolve => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let w = img.width, h = img.height;
-      const max = 800;
-      if (w > max || h > max) {
-        if (w > h) { h = Math.round(h * max / w); w = max; }
-        else       { w = Math.round(w * max / h); h = max; }
-      }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const b64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
-      URL.revokeObjectURL(url);
-      resolve(b64);
-    };
-    img.src = url;
-  });
-}
-
-// ─── Reset Form ───────────────────────────────────────────────────────────────
-function resetForm() {
-  document.getElementById('orderSelect').value = '';
-  document.getElementById('cvGrid').style.display = 'none';
-  capturedBlob = null;
-  hidePreview();
-  if (currentMode === 'camera') {
-    document.getElementById('camera-section').classList.add('show');
-    startCamera();
-  } else {
-    document.getElementById('upload-section').classList.add('show');
-    document.getElementById('fileInput').value = '';
-  }
-}
-
-// ─── History ──────────────────────────────────────────────────────────────────
-function toggleHistory() {
-  historyVisible = !historyVisible;
-  const sec = document.getElementById('historySection');
-  const btn = document.getElementById('historyBtn');
-  sec.classList.toggle('show', historyVisible);
-  btn.textContent = historyVisible ? '📜 Hide History' : '📜 History';
-  if (historyVisible) loadHistory();
-}
-
-async function loadHistory() {
-  document.getElementById('historyContent').innerHTML = '<div class="no-records">Loading...</div>';
-  try {
-    const res  = await fetch('/api/history');
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
-
-    if (!data.records.length) {
-      document.getElementById('historyContent').innerHTML =
-        '<div class="no-records">📭 No records found for today.</div>';
-      return;
-    }
-
-    const headers = Object.keys(data.records[0]);
-    let html = `<div class="history-table-wrap"><table>
-      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody>`;
-
-    data.records.forEach(r => {
-      html += '<tr>';
-      headers.forEach(h => {
-        const val = r[h] || '';
-        if (h.toLowerCase().includes('image') && val.startsWith('http')) {
-          html += `<td class="img-cell"><img src="${val}" onclick="window.open('${val}','_blank')" title="Click to view full"/></td>`;
-        } else {
-          html += `<td>${val}</td>`;
+        // Load orders
+        async function loadOrders() {
+            try {
+                const res = await fetch('/api/orders');
+                const data = await res.json();
+                if (data.success) {
+                    orders = data.orders;
+                    const select = document.getElementById('orderSelect');
+                    orders.forEach(o => {
+                        const opt = document.createElement('option');
+                        opt.value = o.id;
+                        opt.textContent = o.id;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (e) { console.error(e); }
         }
-      });
-      html += '</tr>';
-    });
 
-    html += `</tbody></table></div>
-      <p style="color:#888; font-size:0.85rem; margin-top:10px; text-align:right;">
-        Total today: <strong style="color:white;">${data.records.length}</strong>
-      </p>`;
+        // Load scorecard
+        async function loadScorecard() {
+            try {
+                const res = await fetch('/api/scorecard');
+                const data = await res.json();
+                if (data.success) {
+                    const pickup = data.pickup_ready;
+                    const inbound = data.inbound_done;
+                    const total = pickup + inbound;
+                    document.getElementById('pickup').textContent = `${pickup} (${total ? ((pickup/total)*100).toFixed(1) : 0}%)`;
+                    document.getElementById('inbound').textContent = `${inbound} (${total ? ((inbound/total)*100).toFixed(1) : 0}%)`;
+                    document.getElementById('total').textContent = total;
+                    
+                    const pickupPct = total ? (pickup / total) * 100 : 0;
+                    document.getElementById('donut').style.background = 
+                        `conic-gradient(#E67E22 0deg ${pickupPct * 3.6}deg, #27AE60 ${pickupPct * 3.6}deg 360deg)`;
+                }
+            } catch (e) { console.error(e); }
+        }
 
-    document.getElementById('historyContent').innerHTML = html;
-  } catch(e) {
-    document.getElementById('historyContent').innerHTML =
-      `<div class="no-records">❌ Error: ${e.message}</div>`;
-  }
-}
+        // Order select change
+        document.getElementById('orderSelect').addEventListener('change', function() {
+            const id = this.value;
+            if (id) {
+                selectedOrder = orders.find(o => o.id === id);
+                document.getElementById('categoryDisplay').textContent = selectedOrder.category || 'N/A';
+                document.getElementById('vendorDisplay').textContent = selectedOrder.vendor || 'N/A';
+                document.getElementById('infoRow').style.display = 'flex';
+            } else {
+                selectedOrder = null;
+                document.getElementById('infoRow').style.display = 'none';
+            }
+        });
 
-// ─── UI Helpers ───────────────────────────────────────────────────────────────
-function showToast(msg, type = 'success') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = `toast ${type} show`;
-  setTimeout(() => t.classList.remove('show'), 4000);
-}
+        // Camera - BACK CAMERA
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: "environment" } }
+                });
+                document.getElementById('video').srcObject = stream;
+            } catch (e) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: "environment" }
+                    });
+                    document.getElementById('video').srcObject = stream;
+                } catch (e2) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    document.getElementById('video').srcObject = stream;
+                }
+            }
+        }
 
-function showLoading(text = 'Saving...') {
-  document.getElementById('loadingText').textContent = text;
-  document.getElementById('loadingOverlay').classList.add('show');
-  document.getElementById('saveBtn').disabled = true;
-}
+        // Capture photo
+        document.getElementById('captureBtn').addEventListener('click', function() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const preview = document.getElementById('preview');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            capturedImage = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+            preview.src = canvas.toDataURL('image/jpeg', 0.7);
+            
+            video.classList.add('hidden');
+            preview.classList.remove('hidden');
+            this.classList.add('hidden');
+            document.getElementById('retakeBtn').classList.remove('hidden');
+        });
 
-function hideLoading() {
-  document.getElementById('loadingOverlay').classList.remove('show');
-  document.getElementById('saveBtn').disabled = false;
-}
-</script>
+        // Retake
+        document.getElementById('retakeBtn').addEventListener('click', function() {
+            capturedImage = null;
+            document.getElementById('video').classList.remove('hidden');
+            document.getElementById('preview').classList.add('hidden');
+            document.getElementById('captureBtn').classList.remove('hidden');
+            this.classList.add('hidden');
+            startCamera();
+        });
+
+        // Save
+        document.getElementById('saveBtn').addEventListener('click', async function() {
+            const msg = document.getElementById('message');
+            
+            if (!selectedOrder) {
+                msg.innerHTML = '<div class="error">Please select an order!</div>';
+                return;
+            }
+            if (!capturedImage) {
+                msg.innerHTML = '<div class="error">Please capture an image!</div>';
+                return;
+            }
+
+            this.disabled = true;
+            this.textContent = 'Saving...';
+
+            try {
+                const res = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_number: selectedOrder.id,
+                        category: selectedOrder.category,
+                        vendor: selectedOrder.vendor,
+                        image_b64: capturedImage
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('beep').play();
+                    msg.innerHTML = '<div class="success">✅ Record saved successfully!</div>';
+                    
+                    // Reset form
+                    document.getElementById('orderSelect').value = '';
+                    document.getElementById('infoRow').style.display = 'none';
+                    selectedOrder = null;
+                    capturedImage = null;
+                    document.getElementById('video').classList.remove('hidden');
+                    document.getElementById('preview').classList.add('hidden');
+                    document.getElementById('captureBtn').classList.remove('hidden');
+                    document.getElementById('retakeBtn').classList.add('hidden');
+                    startCamera();
+                    loadScorecard();
+                    
+                    setTimeout(() => msg.innerHTML = '', 3000);
+                } else {
+                    msg.innerHTML = `<div class="error">${data.error}</div>`;
+                }
+            } catch (e) {
+                msg.innerHTML = `<div class="error">${e.message}</div>`;
+            }
+
+            this.disabled = false;
+            this.textContent = '🚚 Chalo Inbound Mai';
+        });
+
+        // History toggle
+        document.getElementById('historyBtn').addEventListener('click', async function() {
+            const section = document.getElementById('history-section');
+            if (section.classList.contains('hidden')) {
+                const res = await fetch('/api/history');
+                const data = await res.json();
+                if (data.success) {
+                    const tbody = document.querySelector('#historyTable tbody');
+                    tbody.innerHTML = '';
+                    data.records.forEach(r => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td>${r.Date || r.date || ''}</td><td>${r.Order || r.order_number || ''}</td><td>${r.Category || r.category || ''}</td><td>${r.Vendor || r.vendor || ''}</td>`;
+                        tbody.appendChild(tr);
+                    });
+                }
+                section.classList.remove('hidden');
+            } else {
+                section.classList.add('hidden');
+            }
+        });
+
+        // Init
+        loadOrders();
+        loadScorecard();
+        startCamera();
+    </script>
 </body>
 </html>
