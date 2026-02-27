@@ -1,90 +1,662 @@
-from flask import Flask, jsonify, request
-import gspread
-from google.oauth2.service_account import Credentials
-import json
-import os
-import requests
-from datetime import datetime
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleek-Inbound</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-app = Flask(__name__)
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
 
-def get_sheets_client():
-    creds_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    if not creds_json:
-        raise Exception("GOOGLE_SERVICE_ACCOUNT_JSON not set")
-    creds_dict = json.loads(creds_json)
-    creds = Credentials.from_service_account_info(creds_dict, scopes=[
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive'
-    ])
-    return gspread.authorize(creds)
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
 
-@app.route('/api/orders')
-def get_orders():
-    try:
-        client = get_sheets_client()
-        sheet_id = os.environ.get('GOOGLE_SHEET_ID')
-        spreadsheet = client.open_by_key(sheet_id)
-        dump_sheet = spreadsheet.worksheet("Dump")
-        
-        order_numbers = dump_sheet.col_values(5)[1:]
-        vendors = dump_sheet.col_values(54)[1:]
-        categories = dump_sheet.col_values(90)[1:]
-        
-        orders = []
-        for i, order in enumerate(order_numbers):
-            if order and order.strip():
-                orders.append({
-                    "order": order.strip(),
-                    "vendor": vendors[i] if i < len(vendors) else "",
-                    "category": categories[i] if i < len(categories) else ""
-                })
-        
-        return jsonify(orders)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            border-radius: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
 
-@app.route('/api/scorecard')
-def get_scorecard():
-    try:
-        client = get_sheets_client()
-        sheet_id = os.environ.get('GOOGLE_SHEET_ID')
-        spreadsheet = client.open_by_key(sheet_id)
-        
-        today = datetime.now().strftime("%Y-%m-%d")
-        
-        score_sheet = spreadsheet.worksheet("Score Card")
-        dates = score_sheet.col_values(1)[1:]
-        pickup_ready = sum(1 for d in dates if today in str(d))
-        
-        inbound_sheet = spreadsheet.worksheet("inbound")
-        inbound_dates = inbound_sheet.col_values(1)[1:]
-        inbound_done = sum(1 for d in inbound_dates if today in str(d))
-        
-        return jsonify({
-            "pickup_ready": pickup_ready,
-            "inbound_done": inbound_done
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
 
-@app.route('/api/save', methods=['POST'])
-def save_record():
-    try:
-        data = request.json
-        order_number = data.get('order_number')
-        category = data.get('category', '')
-        vendor = data.get('vendor', '')
-        image_base64 = data.get('image')
-        
-        imgbb_key = os.environ.get('IMGBB_API_KEY')
-        img_response = requests.post(
-            'https://api.imgbb.com/1/upload',
-            data={'key': imgbb_key, 'image': image_base64}
-        )
-        image_url = img_response.json()['data']['url']
-        
-        client = get_sheets_client()
-        sheet_id = os.environ.get('GOOGLE_SHEET_ID')
-        spreadsheet = client.open_by_key(sheet_id)
-        sheet = spreadsheet.worksheet("in
+        .header p {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .scorecard {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+        }
+
+        .donut-container {
+            position: relative;
+            width: 160px;
+            height: 160px;
+        }
+
+        .donut {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: conic-gradient(#E67E22 0% 50%, #27AE60 50% 100%);
+        }
+
+        .donut-hole {
+            width: 110px;
+            height: 110px;
+            background: #1a1a2e;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donut-hole .number {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .donut-hole .label {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.orange {
+            background: #E67E22;
+        }
+
+        .legend-dot.green {
+            background: #27AE60;
+        }
+
+        .legend-text {
+            font-size: 0.9rem;
+        }
+
+        .legend-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .form-section {
+            background: rgba(255,255,255,0.05);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        select {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            background: #1e3a5f;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        select option {
+            background: #1e3a5f;
+            color: white;
+        }
+
+        .info-boxes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            padding: 15px;
+            background: #1e3a5f;
+            border-radius: 10px;
+        }
+
+        .info-box.category {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .info-box.vendor {
+            border-left: 4px solid #E67E22;
+        }
+
+        .info-box-label {
+            font-size: 0.75rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .info-box-value {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .camera-section {
+            margin-bottom: 20px;
+        }
+
+        .camera-section label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        #video, #canvas, #preview {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+        }
+
+        #preview {
+            display: none;
+        }
+
+        .camera-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.02);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-capture {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-retake {
+            background: #e74c3c;
+            color: white;
+            display: none;
+        }
+
+        .btn-save {
+            background: #4CAF50;
+            color: white;
+            width: 100%;
+            padding: 18px;
+            font-size: 1.1rem;
+        }
+
+        .btn-history {
+            background: #9b59b6;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .history-section {
+            display: none;
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .history-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-item {
+            background: #1e3a5f;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .history-item-order {
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .history-item-time {
+            color: #aaa;
+            font-size: 0.85rem;
+        }
+
+        .history-item-details {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+        }
+
+        .history-item img {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #aaa;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-weight: 500;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 Fleek-Inbound 📦</h1>
+            <p>Jahan Vintage Wahan Fleek</p>
+        </div>
+
+        <div class="scorecard">
+            <div class="donut-container">
+                <div class="donut" id="donutChart">
+                    <div class="donut-hole">
+                        <span class="number" id="totalCount">0</span>
+                        <span class="label">Total</span>
+                    </div>
+                </div>
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot orange"></div>
+                    <div>
+                        <div class="legend-text">PICKUP_READY</div>
+                        <div class="legend-value" id="pickupCount">0</div>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot green"></div>
+                    <div>
+                        <div class="legend-text">INBOUND_DONE</div>
+                        <div class="legend-value" id="inboundCount">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-title">📋 New Stock Entry</div>
+            
+            <div class="form-group">
+                <label>Order Number *</label>
+                <select id="orderSelect">
+                    <option value="">Select order number...</option>
+                </select>
+            </div>
+
+            <div class="info-boxes" id="infoBoxes" style="display: none;">
+                <div class="info-box category">
+                    <div class="info-box-label">Category</div>
+                    <div class="info-box-value" id="categoryValue">-</div>
+                </div>
+                <div class="info-box vendor">
+                    <div class="info-box-label">Vendor</div>
+                    <div class="info-box-value" id="vendorValue">-</div>
+                </div>
+            </div>
+
+            <div class="camera-section">
+                <label>📸 Stock Image</label>
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas" style="display:none;"></canvas>
+                <img id="preview" alt="Captured photo">
+                
+                <div class="camera-buttons">
+                    <button class="btn btn-capture" id="captureBtn">📷 Capture Photo</button>
+                    <button class="btn btn-retake" id="retakeBtn">🔄 Retake</button>
+                </div>
+            </div>
+
+            <button class="btn btn-save" id="saveBtn" disabled>✅ Chalo Inbound Mai</button>
+            <button class="btn btn-history" id="historyBtn">📜 History</button>
+        </div>
+
+        <div class="history-section" id="historySection">
+            <div class="history-title">📜 Today's Records</div>
+            <div id="historyList">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">✅ Record saved successfully!</div>
+    <audio id="beepSound" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
+
+    <script>
+        let ordersData = [];
+        let capturedImage = null;
+        let selectedOrder = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOrders();
+            loadScorecard();
+            initCamera();
+        });
+
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/orders');
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error loading orders:', data.error);
+                    return;
+                }
+                
+                ordersData = data;
+                const select = document.getElementById('orderSelect');
+                
+                data.forEach(order => {
+                    const option = document.createElement('option');
+                    option.value = order.order;
+                    option.textContent = order.order;
+                    option.dataset.category = order.category;
+                    option.dataset.vendor = order.vendor;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load orders:', error);
+            }
+        }
+
+        async function loadScorecard() {
+            try {
+                const response = await fetch('/api/scorecard');
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error loading scorecard:', data.error);
+                    return;
+                }
+                
+                const pickup = data.pickup_ready || 0;
+                const inbound = data.inbound_done || 0;
+                const total = pickup + inbound;
+                
+                document.getElementById('pickupCount').textContent = pickup;
+                document.getElementById('inboundCount').textContent = inbound;
+                document.getElementById('totalCount').textContent = total;
+                
+                const pickupPercent = total > 0 ? (pickup / total) * 100 : 50;
+                
+                document.getElementById('donutChart').style.background = 
+                    `conic-gradient(#E67E22 0% ${pickupPercent}%, #27AE60 ${pickupPercent}% 100%)`;
+            } catch (error) {
+                console.error('Failed to load scorecard:', error);
+            }
+        }
+
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                document.getElementById('video').srcObject = stream;
+            } catch (error) {
+                console.error('Camera error:', error);
+                alert('Camera access denied. Please allow camera access.');
+            }
+        }
+
+        document.getElementById('orderSelect').addEventListener('change', (e) => {
+            const selected = e.target.options[e.target.selectedIndex];
+            
+            if (selected.value) {
+                selectedOrder = {
+                    order: selected.value,
+                    category: selected.dataset.category || '-',
+                    vendor: selected.dataset.vendor || '-'
+                };
+                
+                document.getElementById('categoryValue').textContent = selectedOrder.category;
+                document.getElementById('vendorValue').textContent = selectedOrder.vendor;
+                document.getElementById('infoBoxes').style.display = 'grid';
+            } else {
+                selectedOrder = null;
+                document.getElementById('infoBoxes').style.display = 'none';
+            }
+            
+            updateSaveButton();
+        });
+
+        document.getElementById('captureBtn').addEventListener('click', () => {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const preview = document.getElementById('preview');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            capturedImage = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+            
+            preview.src = canvas.toDataURL('image/jpeg', 0.7);
+            preview.style.display = 'block';
+            video.style.display = 'none';
+            
+            document.getElementById('captureBtn').style.display = 'none';
+            document.getElementById('retakeBtn').style.display = 'block';
+            
+            updateSaveButton();
+        });
+
+        document.getElementById('retakeBtn').addEventListener('click', () => {
+            capturedImage = null;
+            
+            document.getElementById('preview').style.display = 'none';
+            document.getElementById('video').style.display = 'block';
+            
+            document.getElementById('captureBtn').style.display = 'block';
+            document.getElementById('retakeBtn').style.display = 'none';
+            
+            updateSaveButton();
+        });
+
+        function updateSaveButton() {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = !(selectedOrder && capturedImage);
+        }
+
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            if (!selectedOrder || !capturedImage) return;
+            
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Saving...';
+            
+            try {
+                const response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_number: selectedOrder.order,
+                        category: selectedOrder.category,
+                        vendor: selectedOrder.vendor,
+                        image: capturedImage
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('beepSound').play();
+                    
+                    const toast = document.getElementById('toast');
+                    toast.style.display = 'block';
+                    setTimeout(() => toast.style.display = 'none', 3000);
+                    
+                    resetForm();
+                    loadScorecard();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to save: ' + error.message);
+            }
+            
+            saveBtn.disabled = false;
+            saveBtn.textContent = '✅ Chalo Inbound Mai';
+        });
+
+        function resetForm() {
+            document.getElementById('orderSelect').value = '';
+            document.getElementById('infoBoxes').style.display = 'none';
+            document.getElementById('retakeBtn').click();
+            selectedOrder = null;
+            capturedImage = null;
+            updateSaveButton();
+        }
+
+        document.getElementById('historyBtn').addEventListener('click', async () => {
+            const section = document.getElementById('historySection');
+            
+            if (section.style.display === 'none' || section.style.display === '') {
+                section.style.display = 'block';
+                loadHistory();
+            } else {
+                section.style.display = 'none';
+            }
+        });
+
+        async function loadHistory() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+                
+                if (data.error) {
+                    list.innerHTML = '<div class="loading">Error loading history</div>';
+                    return;
+                }
+                
+                if (data.length === 0) {
+                    list.innerHTML = '<div class="loading">No records today</div>';
+                    return;
+                }
+                
+                list.innerHTML = data.map(record => `
+                    <div class="history-item">
+                        <div class="history-item-header">
+                            <span class="history-item-order">${record.order}</span>
+                            <span class="history-item-time">${record.date}</span>
+                        </div>
+                        <div class="history-item-details">
+                            <span>📦 ${record.category}</span>
+                            <span>🏪 ${record.vendor}</span>
+                        </div>
+                        ${record.image ? `<img src="${record.image}" alt="Stock image">` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                list.innerHTML = '<div class="loading">Failed to load history</div>';
+            }
+        }
+    </script>
+</body>
+</html>
