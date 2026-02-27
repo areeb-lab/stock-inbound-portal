@@ -1,167 +1,137 @@
-from flask import Flask, jsonify, request, send_file
-from flask_cors import CORS
+from flask import Flask, jsonify, request, Response
 import gspread
 from google.oauth2.service_account import Credentials
-import requests
-import base64
-from datetime import datetime
-import os
 import json
+import os
+import requests
+from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)
 
-def get_gspread_client():
-    creds_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+def get_sheets_client():
+    creds_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     if not creds_json:
-        raise Exception("GOOGLE_SERVICE_ACCOUNT_JSON env variable not set")
+        raise Exception("GOOGLE_SERVICE_ACCOUNT_JSON not set")
     creds_dict = json.loads(creds_json)
-    credentials = Credentials.from_service_account_info(
-        creds_dict,
-        scopes=[
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive"
-        ]
-    )
-    return gspread.authorize(credentials)
+    creds = Credentials.from_service_account_info(creds_dict, scopes=[
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
+    ])
+    return gspread.authorize(creds)
 
-def get_sheet_id():
-    return os.environ.get("GOOGLE_SHEET_ID", "")
-
-def get_imgbb_key():
-    return os.environ.get("IMGBB_API_KEY", "")
-
-@app.route("/")
-def index():
-    # Serve index.html from root directory (not static folder)
-    return send_file("index.html")
-
-@app.route("/api/orders", methods=["GET"])
+@app.route('/api/orders')
 def get_orders():
     try:
-        client = get_gspread_client()
-        spreadsheet = client.open_by_key(get_sheet_id())
+        client = get_sheets_client()
+        sheet_id = os.environ.get('GOOGLE_SHEET_ID')
+        spreadsheet = client.open_by_key(sheet_id)
         dump_sheet = spreadsheet.worksheet("Dump")
-
-        order_numbers = dump_sheet.col_values(5)[1:]    # Col E
-        vendors       = dump_sheet.col_values(54)[1:]   # Col BB
-        categories    = dump_sheet.col_values(90)[1:]   # Col CL
-
+        
+        order_numbers = dump_sheet.col_values(5)[1:]
+        vendors = dump_sheet.col_values(54)[1:]
+        categories = dump_sheet.col_values(90)[1:]
+        
         orders = []
         for i, order in enumerate(order_numbers):
-            order = str(order).strip()
-            if not order:
-                continue
-            orders.append({
-                "id": order,
-                "category": categories[i] if i < len(categories) else "",
-                "vendor":   vendors[i]    if i < len(vendors)    else ""
-            })
-
-        return jsonify({"success": True, "orders": orders})
+            if order and order.strip():
+                orders.append({
+                    "order": order.strip(),
+                    "vendor": vendors[i] if i < len(vendors) else "",
+                    "category": categories[i] if i < len(categories) else ""
+                })
+        
+        return jsonify(orders)
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-
-@app.route("/api/scorecard", methods=["GET"])
+@app.route('/api/scorecard')
 def get_scorecard():
     try:
-        client = get_gspread_client()
-        spreadsheet = client.open_by_key(get_sheet_id())
-        today = datetime.now()
-
-        today_formats = [
-            today.strftime("%d-%b-%Y"),
-            today.strftime("%d-%B-%Y"),
-            today.strftime("%Y-%m-%d"),
-            today.strftime("%d/%m/%Y"),
-        ]
-
-        score_card_sheet = spreadsheet.worksheet("Score Card")
-        score_data = score_card_sheet.get_all_values()
+        client = get_sheets_client()
+        sheet_id = os.environ.get('GOOGLE_SHEET_ID')
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        today = datetime.now().strftime("%Y-%m-%d")
+        today_ddmm = datetime.now().strftime("%d/%m/%Y")
+        today_short = datetime.now().strftime("%d-%b-%Y")
+        
+        # Pickup ready count from Score Card
+        score_sheet = spreadsheet.worksheet("Score Card")
+        dates = score_sheet.col_values(1)[1:]
+        orders_col = score_sheet.col_values(3)[1:]
+        
         pickup_ready = 0
-        if len(score_data) > 1:
-            for row in score_data[1:]:
-                if len(row) >= 3:
-                    date_val = str(row[0]).strip()
-                    if any(date_val == fmt for fmt in today_formats) and str(row[2]).strip():
-                        pickup_ready += 1
-
-        main_sheet = spreadsheet.worksheet("inbound")
-        main_data  = main_sheet.get_all_values()
-        inbound_done = 0
-        today_str = today.strftime("%Y-%m-%d")
-        if len(main_data) > 1:
-            for row in main_data[1:]:
-                if len(row) >= 1 and str(row[0]).strip()[:10] == today_str:
-                    inbound_done += 1
-
+        for i, d in enumerate(dates):
+            if today in str(d) or today_ddmm in str(d) or today_short in str(d):
+                pickup_ready += 1
+        
+        # Inbound done count
+        inbound_sheet = spreadsheet.worksheet("inbound")
+        inbound_dates = inbound_sheet.col_values(1)[1:]
+        inbound_done = sum(1 for d in inbound_dates if today in str(d))
+        
         return jsonify({
-            "success": True,
             "pickup_ready": pickup_ready,
             "inbound_done": inbound_done
         })
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-
-@app.route("/api/save", methods=["POST"])
+@app.route('/api/save', methods=['POST'])
 def save_record():
     try:
-        data = request.get_json()
-        order_number = data.get("order_number", "")
-        category     = data.get("category", "")
-        vendor       = data.get("vendor", "")
-        image_b64    = data.get("image_b64", "")
-
-        if not order_number:
-            return jsonify({"success": False, "error": "Order number required"}), 400
-        if not image_b64:
-            return jsonify({"success": False, "error": "Image required"}), 400
-
-        response = requests.post(
-            "https://api.imgbb.com/1/upload",
-            data={"key": get_imgbb_key(), "image": image_b64},
-            timeout=30
+        data = request.json
+        order_number = data.get('order_number')
+        category = data.get('category', '')
+        vendor = data.get('vendor', '')
+        image_base64 = data.get('image')
+        
+        # Upload to ImgBB
+        imgbb_key = os.environ.get('IMGBB_API_KEY')
+        img_response = requests.post(
+            'https://api.imgbb.com/1/upload',
+            data={'key': imgbb_key, 'image': image_base64}
         )
-        response.raise_for_status()
-        image_url = response.json()["data"]["url"]
-
-        client = get_gspread_client()
-        spreadsheet = client.open_by_key(get_sheet_id())
+        image_url = img_response.json()['data']['url']
+        
+        # Save to sheet
+        client = get_sheets_client()
+        sheet_id = os.environ.get('GOOGLE_SHEET_ID')
+        spreadsheet = client.open_by_key(sheet_id)
         sheet = spreadsheet.worksheet("inbound")
+        
         date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         sheet.append_row([date_now, order_number, category, vendor, image_url])
-
+        
         return jsonify({"success": True, "image_url": image_url})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-
-@app.route("/api/history", methods=["GET"])
+@app.route('/api/history')
 def get_history():
     try:
-        client = get_gspread_client()
-        spreadsheet = client.open_by_key(get_sheet_id())
+        client = get_sheets_client()
+        sheet_id = os.environ.get('GOOGLE_SHEET_ID')
+        spreadsheet = client.open_by_key(sheet_id)
         sheet = spreadsheet.worksheet("inbound")
-        all_data = sheet.get_all_values()
-
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        records = []
-        if len(all_data) > 1:
-            headers = all_data[0]
-            for row in all_data[1:]:
-                if len(row) >= 1 and str(row[0]).strip()[:10] == today_str:
-                    record = {}
-                    for j, header in enumerate(headers):
-                        record[header] = row[j] if j < len(row) else ""
-                    records.append(record)
-
-        return jsonify({"success": True, "records": records})
+        
+        today = datetime.now().strftime("%Y-%m-%d")
+        records = sheet.get_all_values()[1:]
+        
+        today_records = [
+            {
+                "date": r[0],
+                "order": r[1],
+                "category": r[2] if len(r) > 2 else "",
+                "vendor": r[3] if len(r) > 3 else "",
+                "image": r[4] if len(r) > 4 else ""
+            }
+            for r in records if today in r[0]
+        ]
+        
+        return jsonify(today_records)
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+# For Vercel
+app = app
